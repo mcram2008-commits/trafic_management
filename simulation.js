@@ -29,10 +29,10 @@ let simSpeed=1.0,autoMode=false,autoTimer=null,phase='normal';
 let totalAmb=0,responseTimes=[],detectionStart=0;
 let detectionProgress=0,ambPhaseTimer=0;
 const signals={
-  north:{state:'green', timer:30},
-  east: {state:'red',   timer:60},
-  south:{state:'red',   timer:90},
-  west: {state:'red',   timer:120},
+  north:{state:'green',  timer:30},
+  east: {state:'yellow', timer:30},
+  south:{state:'red',    timer:60},
+  west: {state:'red',    timer:90},
 };
 const CYCLE=[['north',30],['east',30],['south',30],['west',30]];
 let cycleIdx=0,cycleT=0,yellowPending=false;
@@ -119,7 +119,7 @@ class Vehicle{
     const ahead=all.filter(v=>v.id!==this.id&&v.dir===this.dir&&v.pos>this.pos).sort((a,b)=>a.pos-b.pos)[0];
     // Realistic traffic stopping behavior: only stop if before the stop line, or if already slowing/stopped near it.
     // Vehicles that have already entered the intersection will clear it smoothly.
-    const mustStop=(sig==='red')&&!(phase==='priority'&&this.dir===AMB.dir) && (this.pos < stopLine || (this.pos < stopLine + 20 && this.spd < 5));
+    const mustStop=(sig==='red'||sig==='yellow')&&!(phase==='priority'&&this.dir===AMB.dir) && (this.pos < stopLine || (this.pos < stopLine + 20 && this.spd < 5));
     let desired=this.spec.maxSpd;
     if(mustStop&&dist>0){const bd=(this.spd*this.spd)/(2*this.spec.dec);if(dist<=bd+18)desired=0;}
     if(mustStop&&this.pos>=stopLine){this.pos=stopLine;desired=0;}
@@ -997,47 +997,39 @@ function tickCycle(dt){
   if(phase!=='normal')return;
   cycleT+=dt;
   const cur=CYCLE[cycleIdx];
-  const greenDuration=cur[1];
-  const yellowDuration=3;
-  const nextDir=CYCLE[(cycleIdx+1)%CYCLE.length][0];
+  const greenDuration=cur[1]; // which is 30
   
-  if(cycleT < greenDuration){
-    // Normal green phase
-    signals[cur[0]].state='green';
-    signals[cur[0]].timer=Math.max(0,Math.ceil(greenDuration - cycleT));
-    DIRS.forEach(d=>{
-      if(d!==cur[0]){
-        signals[d].state='red';
-        signals[d].timer=Math.max(0,Math.ceil(greenDuration - cycleT + yellowDuration));
-      }
-    });
-    if(yellowPending){yellowPending=false;updateSigUI();}
-  }
-  else if(cycleT < greenDuration + yellowDuration){
-    // Yellow preparation phase (previous green turns red, next green turns yellow)
-    signals[cur[0]].state='red';
-    signals[cur[0]].timer=Math.max(0,Math.ceil(greenDuration + yellowDuration - cycleT));
-    signals[nextDir].state='yellow';
-    signals[nextDir].timer=Math.max(0,Math.ceil(greenDuration + yellowDuration - cycleT));
-    DIRS.forEach(d=>{
-      if(d!==cur[0] && d!==nextDir){
-        signals[d].state='red';
-        signals[d].timer=Math.max(0,Math.ceil(greenDuration + yellowDuration - cycleT));
-      }
-    });
-    if(!yellowPending){yellowPending=true;updateSigUI();}
-  }
-  else {
-    // Transition to next road green
-    signals[cur[0]].state='red';
+  if(cycleT >= greenDuration){
+    // Transition to next road
     cycleIdx=(cycleIdx+1)%CYCLE.length;
-    const nd=CYCLE[cycleIdx][0];
-    signals[nd].state='green';
     cycleT=0;
     yellowPending=false;
-    DIRS.forEach(d=>{if(d!==nd)signals[d].state='red';});
     updateSigUI();
+    const nd=CYCLE[cycleIdx][0];
     addLog(`🚦 ${nd.toUpperCase()} → GREEN (${CYCLE[cycleIdx][1]}s)`,'info');
+  }
+  
+  // Update state and timers dynamically based on active road
+  const activeRoad=CYCLE[cycleIdx][0];
+  const nextRoad=CYCLE[(cycleIdx+1)%CYCLE.length][0];
+  const thirdRoad=CYCLE[(cycleIdx+2)%CYCLE.length][0];
+  const fourthRoad=CYCLE[(cycleIdx+3)%CYCLE.length][0];
+  
+  signals[activeRoad].state='green';
+  signals[activeRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT));
+  
+  signals[nextRoad].state='yellow';
+  signals[nextRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT));
+  
+  signals[thirdRoad].state='red';
+  signals[thirdRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT + 30));
+  
+  signals[fourthRoad].state='red';
+  signals[fourthRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT + 60));
+  
+  // Trigger DOM updates
+  if(Math.floor(cycleT*10)%2===0){
+    updateSigUI();
   }
 }
 
