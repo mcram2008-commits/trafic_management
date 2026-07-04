@@ -117,7 +117,9 @@ class Vehicle{
     const r=rc[this.dir],sig=signals[this.dir].state;
     const stopLine=r.stopDist - this.spec.len/2 - 6,dist=stopLine-this.pos;
     const ahead=all.filter(v=>v.id!==this.id&&v.dir===this.dir&&v.pos>this.pos).sort((a,b)=>a.pos-b.pos)[0];
-    const mustStop=(sig==='red'||sig==='yellow')&&!(phase==='priority'&&this.dir===AMB.dir);
+    // Realistic traffic stopping behavior: only stop if before the stop line, or if already slowing/stopped near it.
+    // Vehicles that have already entered the intersection will clear it smoothly.
+    const mustStop=(sig==='red'||sig==='yellow')&&!(phase==='priority'&&this.dir===AMB.dir) && (this.pos < stopLine || (this.pos < stopLine + 20 && this.spd < 5));
     let desired=this.spec.maxSpd;
     if(mustStop&&dist>0){const bd=(this.spd*this.spd)/(2*this.spec.dec);if(dist<=bd+18)desired=0;}
     if(mustStop&&this.pos>=stopLine){this.pos=stopLine;desired=0;}
@@ -1081,7 +1083,7 @@ function activatePriority(){
 function resumeNormal(){
   DIRS.forEach(d=>signals[d].state='red');
   const nd=CYCLE[cycleIdx][0];signals[nd].state='green';cycleT=0;yellowPending=false;
-  updateSigUI();setPhaseUI('resuming');updateTimelineUI(3);
+  updateSigUI();setPhaseUI('normal');updateTimelineUI(0);
   addLog(`🔄 Resume → ${nd.toUpperCase()} GREEN`,'info');
 }
 function resetSimulation(){
