@@ -56,19 +56,19 @@ function roadCfg(){
   return {
     // North: spawns at top, travels DOWN → front = DOWN → angle = π
     north:{spawnX:cx-lo,      spawnY:-SO,                 dx:0, dy:1,  angle:Math.PI,
-           stopDist: cy-hw-14+SO,
+           stopDist: cy-hw-21+SO,
            exitDist: cy+hw+EX+SO},
     // South: spawns at bottom, travels UP → front = UP → angle = 0
     south:{spawnX:cx+lo,      spawnY:canvas.height+SO,    dx:0, dy:-1, angle:0,
-           stopDist: canvas.height+SO-(cy+hw+14),
+           stopDist: canvas.height+SO-(cy+hw+19),
            exitDist: canvas.height+SO-(cy-hw-EX)},
     // East: spawns at right, travels LEFT → front = LEFT → angle = −π/2
     east: {spawnX:canvas.width+SO, spawnY:cy-lo,          dx:-1,dy:0,  angle:-Math.PI/2,
-           stopDist: canvas.width+SO-(cx+hw+14),
+           stopDist: canvas.width+SO-(cx+hw+19),
            exitDist: canvas.width+SO-(cx-hw-EX)},
     // West: spawns at left, travels RIGHT → front = RIGHT → angle = π/2
     west: {spawnX:-SO,        spawnY:cy+lo,               dx:1, dy:0,  angle:Math.PI/2,
-           stopDist: cx-hw-14+SO,
+           stopDist: cx-hw-21+SO,
            exitDist: cx+hw+EX+SO},
   };
 }
@@ -115,7 +115,7 @@ class Vehicle{
   xy(rc){const r=rc[this.dir];return{x:r.spawnX+r.dx*this.pos,y:r.spawnY+r.dy*this.pos};}
   update(dt,rc,all){
     const r=rc[this.dir],sig=signals[this.dir].state;
-    const stopLine=r.stopDist,dist=stopLine-this.pos;
+    const stopLine=r.stopDist - this.spec.len/2 - 6,dist=stopLine-this.pos;
     const ahead=all.filter(v=>v.id!==this.id&&v.dir===this.dir&&v.pos>this.pos).sort((a,b)=>a.pos-b.pos)[0];
     const mustStop=(sig==='red'||sig==='yellow')&&!(phase==='priority'&&this.dir===AMB.dir);
     let desired=this.spec.maxSpd;
