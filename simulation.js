@@ -85,6 +85,7 @@ const VSPEC={
   jeep: {wid:24,len:42,maxSpd:74,acc:48,dec:110,gap:1.5},
   tractor:{wid:26,len:44,maxSpd:45,acc:22,dec:95,gap:1.6},
   police:{wid:22,len:40,maxSpd:90,acc:75,dec:140,gap:1.3},
+  fire:  {wid:28,len:72,maxSpd:82,acc:32,dec:112,gap:1.8},
 };
 const VCOL={
   car:  ['#cc2233','#1144cc','#116633','#777','#f0f0f0','#cc8800','#6633bb','#dd5511'],
@@ -97,6 +98,7 @@ const VCOL={
   jeep: ['#1b3f2b','#3c4e36','#4a3f2d','#2b2b2b','#691b1b'],
   tractor:['#dd2211','#228822','#0044bb'],
   police:['#111111'],
+  fire:  ['#d32f2f'],
 };
 
 /* ── Vehicle class ────────────────────────────────────────── */
@@ -104,7 +106,7 @@ let _uid=0;
 class Vehicle{
   constructor(dir){
     this.id=_uid++;this.dir=dir;
-    const t=['car','car','car','bike','bike','suv','truck','bus','van','auto','jeep','tractor','police'];
+    const t=['car','car','car','bike','bike','suv','truck','bus','van','auto','jeep','tractor','police','fire'];
     this.type=t[Math.floor(Math.random()*t.length)];
     this.spec=VSPEC[this.type];
     const cp=VCOL[this.type];this.col=cp[Math.floor(Math.random()*cp.length)];
@@ -492,6 +494,36 @@ const VDRAW={
     // lightbar center divider
     ctx.fillStyle='#333';ctx.fillRect(-1.5,-h*0.04,3,4.5);
     wheels4(w,h);headlights(w,h,spd);taillights(w,h,spd);
+  },
+
+  /* ─── FIRE TRUCK (Emergency Fire Service) ──────────────── */
+  fire:(w,h,c,spd)=>{
+    dropshadow(w,h,3,5,0.28);
+    // Red body base
+    ctx.fillStyle='#d32f2f'; ctx.beginPath(); ctx.roundRect(-w/2,-h/2,w,h,4); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1; ctx.stroke();
+    // Cab windshield
+    ctx.fillStyle='rgba(165,222,255,0.72)'; ctx.beginPath(); ctx.roundRect(-w/2+2.5,-h/2+14,w-5,8,1.5); ctx.fill();
+    // Yellow front hood
+    ctx.fillStyle='#ffd000'; ctx.beginPath(); ctx.roundRect(-w/2+0.5,-h/2+0.5,w-1,13,[3,3,0,0]); ctx.fill();
+    // Side Ladders (Grey rails on sides)
+    ctx.fillStyle='#7f8c8d';
+    ctx.fillRect(-w/2-1.5, -h/2+15, 1.5, h-25);
+    ctx.fillRect( w/2, -h/2+15, 1.5, h-25);
+    // Ladder rungs
+    ctx.strokeStyle='#bdc3c7'; ctx.lineWidth=0.8;
+    for(let y = -h/2+18; y < h/2-15; y += 6) {
+      ctx.beginPath(); ctx.moveTo(-w/2-1.5, y); ctx.lineTo(-w/2, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(w/2, y); ctx.lineTo(w/2+1.5, y); ctx.stroke();
+    }
+    // Water Hose reel on roof
+    ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(0, 14, 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=1; ctx.stroke();
+    // Flashing emergency lights (Red/Blue) on roof
+    const flash = Math.sin(performance.now()/80) > 0;
+    ctx.fillStyle = flash ? '#0f22ee' : '#cc1133';
+    ctx.fillRect(-w/2+4, -h/2-4, w-8, 4);
+    wheels4(w,h); headlights(w,h,spd); taillights(w,h,spd);
   },
 };
 
@@ -1148,7 +1180,7 @@ let trainAngle = 0;
 let trainTypeIdx = 0;
 let trainAngleMode = 0; // 0=Side, 1=Front, 2=Top-down
 let trainMode = 'traffic'; // 'traffic' or 'document'
-const trainTypes = ['car', 'bike', 'suv', 'truck', 'bus', 'van', 'auto', 'ambulance'];
+const trainTypes = ['car', 'bike', 'suv', 'truck', 'bus', 'van', 'auto', 'ambulance', 'fire'];
 const docTypes = ['title', 'paragraph', 'table', 'figure', 'header', 'footer', 'equation'];
 let isTrainingActive = false;
 let trainingProgress = 1.0;
@@ -1287,6 +1319,77 @@ function updateTrainingCanvas() {
           }
           trainCtx.fillStyle = '#0055cc';
           trainCtx.beginPath(); trainCtx.arc(0, 10, 4, 0, Math.PI*2); trainCtx.fill();
+          const flash = Math.sin(performance.now()/80) > 0;
+          trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
+          trainCtx.fillRect(-w/2+3, -h/2-4, w-6, 4);
+          trainCtx.restore();
+        }
+      } else if (type === 'fire') {
+        if (trainAngleMode === 0) {
+          // Draw Side View of Fire Truck
+          trainCtx.save();
+          trainCtx.translate(tc.width/2, tc.height/2 + 2);
+          trainCtx.fillStyle = 'rgba(0,10,25,0.22)';
+          trainCtx.beginPath(); trainCtx.ellipse(0, 16, 38, 5, 0, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#d32f2f';
+          trainCtx.beginPath(); trainCtx.roundRect(-36, -18, 72, 30, 4); trainCtx.fill();
+          trainCtx.strokeStyle = '#9e1f1f'; trainCtx.lineWidth = 1; trainCtx.stroke();
+          trainCtx.fillStyle = '#181818';
+          trainCtx.beginPath(); trainCtx.arc(-18, 12, 8, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.arc(16, 12, 8, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#7a8590';
+          trainCtx.beginPath(); trainCtx.arc(-18, 12, 4, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.arc(16, 12, 4, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = 'rgba(165,222,255,0.7)';
+          trainCtx.beginPath(); trainCtx.roundRect(16, -14, 12, 9, 2); trainCtx.fill();
+          trainCtx.fillStyle = '#7f8c8d';
+          trainCtx.fillRect(-22, -8, 36, 8);
+          trainCtx.strokeStyle = '#bdc3c7'; trainCtx.lineWidth = 0.8;
+          for(let x = -20; x < 12; x += 6) {
+            trainCtx.beginPath(); trainCtx.moveTo(x, -8); trainCtx.lineTo(x, 0); trainCtx.stroke();
+          }
+          trainCtx.fillStyle = '#ffffff'; trainCtx.font = 'bold 5px Arial';
+          trainCtx.fillText('FIRE DEPT', -22, 6);
+          trainCtx.restore();
+        } else if (trainAngleMode === 1) {
+          // Draw Front View of Fire Truck
+          trainCtx.save();
+          trainCtx.translate(tc.width/2, tc.height/2 + 2);
+          trainCtx.fillStyle = 'rgba(0,10,25,0.22)';
+          trainCtx.beginPath(); trainCtx.ellipse(0, 18, 24, 4, 0, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#d32f2f';
+          trainCtx.beginPath(); trainCtx.roundRect(-20, -22, 40, 39, 4); trainCtx.fill();
+          trainCtx.strokeStyle = '#9ca4ac'; trainCtx.lineWidth = 1; trainCtx.stroke();
+          trainCtx.fillStyle = '#ffd000';
+          trainCtx.beginPath(); trainCtx.roundRect(-20, 0, 40, 17, [0, 0, 4, 4]); trainCtx.fill();
+          trainCtx.fillStyle = '#1c1d22';
+          trainCtx.beginPath(); trainCtx.roundRect(-12, 3, 24, 8, 2); trainCtx.fill();
+          trainCtx.fillStyle = '#ffffcc';
+          trainCtx.beginPath(); trainCtx.arc(-16, 7, 2.5, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.arc(16, 7, 2.5, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = 'rgba(165,222,255,0.72)';
+          trainCtx.beginPath(); trainCtx.roundRect(-16, -16, 32, 13, 2); trainCtx.fill();
+          const flash = Math.sin(performance.now()/80)>0;
+          trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
+          trainCtx.fillRect(-12, -26, 24, 4);
+          trainCtx.fillStyle = '#ffffff'; trainCtx.font = 'bold 6px Arial'; trainCtx.textAlign = 'center';
+          trainCtx.fillText('FIRE', 0, -2);
+          trainCtx.restore();
+        } else {
+          // Draw Top-Down View of Fire Truck
+          trainCtx.save();
+          trainCtx.translate(tc.width/2, tc.height/2);
+          trainCtx.rotate(trainAngle);
+          const w = 24, h = 48;
+          trainCtx.fillStyle = '#d32f2f'; trainCtx.beginPath(); trainCtx.roundRect(-w/2, -h/2, w, h, 4); trainCtx.fill();
+          trainCtx.strokeStyle = 'rgba(0,0,0,0.3)'; trainCtx.lineWidth = 0.7; trainCtx.stroke();
+          trainCtx.fillStyle = 'rgba(165,222,255,0.72)'; trainCtx.beginPath(); trainCtx.roundRect(-w/2+2.5,-h/2+11,w-5,6,1.5); trainCtx.fill();
+          trainCtx.fillStyle = '#ffd000'; trainCtx.beginPath(); trainCtx.roundRect(-w/2+0.5,-h/2+0.5,w-1,9,[3,3,0,0]); trainCtx.fill();
+          trainCtx.fillStyle = '#7f8c8d';
+          trainCtx.fillRect(-w/2-1, -h/2+10, 1, h-18);
+          trainCtx.fillRect( w/2, -h/2+10, 1, h-18);
+          trainCtx.fillStyle = '#ffffff'; trainCtx.beginPath(); trainCtx.arc(0, 10, 4, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.strokeStyle = '#7f8c8d'; trainCtx.lineWidth = 0.6; trainCtx.stroke();
           const flash = Math.sin(performance.now()/80) > 0;
           trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
           trainCtx.fillRect(-w/2+3, -h/2-4, w-6, 4);
@@ -1456,7 +1559,7 @@ function tickTraining(dt) {
     document.getElementById('btnRetrain').disabled = false;
     
     if (trainMode === 'traffic') {
-      addLog('🎉 AI retrained on all vehicles & angles (0°,90°,180°,270°)! Accuracy: 99.4%', 'success');
+      addLog('🎉 AI retrained on all vehicles & angles (0°,90°,180°,270°)! Accuracy (Ambulance): 99.4%, Accuracy (Fire Service): 98.7%', 'success');
     } else {
       addLog('🎉 AI Document Structure model retrained on layout datasets! Accuracy: 99.1%', 'success');
     }
@@ -1477,14 +1580,15 @@ function tickTraining(dt) {
       }
       
       const type = typesList[trainTypeIdx].toUpperCase();
-      const viewSuffix = (trainMode === 'traffic' && typesList[trainTypeIdx] === 'ambulance') ? ` (${['SIDE', 'FRONT', 'TOP'][trainAngleMode]} VIEW)` : '';
+      const viewSuffix = (trainMode === 'traffic' && (typesList[trainTypeIdx] === 'ambulance' || typesList[trainTypeIdx] === 'fire')) ? ` (${['SIDE', 'FRONT', 'TOP'][trainAngleMode]} VIEW)` : '';
       document.getElementById('trainClass').textContent = `Class: ${type}${viewSuffix}`;
       
       if (Math.random() < 0.28) {
         if (trainMode === 'traffic') {
           addLog(`[AI] Training angles (0°, 90°, 180°, 270°) for ${typesList[trainTypeIdx].toUpperCase()}...`, 'info');
           const mapVal = (0.75 + trainingProgress * 0.244).toFixed(3);
-          addLog(`[AI] Validation step - AMBULANCE mAP@0.5: ${mapVal}, loss: ${trainingLoss.toFixed(4)}`, 'info');
+          const fireMapVal = (0.72 + trainingProgress * 0.267).toFixed(3);
+          addLog(`[AI] Validation step - AMBULANCE mAP@0.5: ${mapVal}, FIRE SERVICE mAP@0.5: ${fireMapVal}`, 'info');
         } else {
           addLog(`[AI] Training layout structure parsing for ${typesList[trainTypeIdx].toUpperCase()}...`, 'info');
         }
@@ -1505,9 +1609,9 @@ function startAITraining() {
   document.getElementById('trainStatus').style.borderColor = '#ffd70040';
   
   if (trainMode === 'traffic') {
-    addLog('⚙️ RETRAINING AI MODEL on 8 classes across multiple angles...', 'warning');
-    addLog('📂 Loading ambulance dataset from local cache...', 'info');
-    addLog('🔍 Found 1,034 ambulance images and 1,245 background images.', 'info');
+    addLog('⚙️ RETRAINING AI MODEL on 9 classes across multiple angles...', 'warning');
+    addLog('📂 Loading ambulance & fire service datasets from local cache...', 'info');
+    addLog('🔍 Found 1,034 ambulance images and 982 fire service images.', 'info');
     addLog('⏳ Initializing neural network transfer learning...', 'info');
   } else {
     addLog('⚙️ RETRAINING DOCUMENT LAYOUT AI MODEL on 7 structural elements...', 'warning');
