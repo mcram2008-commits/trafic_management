@@ -997,10 +997,20 @@ function tickCycle(dt){
   if(phase!=='normal')return;
   cycleT+=dt;
   const cur=CYCLE[cycleIdx],rem=cur[1]-cycleT;
-  if(!yellowPending&&rem<=5){signals[cur[0]].state='yellow';yellowPending=true;updateSigUI();}
+  // Activate yellow only for the current green direction and only once per cycle
+  if(!yellowPending && rem<=5){
+    signals[cur[0]].state='yellow';
+    yellowPending=true;
+    updateSigUI();
+  }
   if(rem<=0){
-    signals[cur[0]].state='red';cycleIdx=(cycleIdx+1)%CYCLE.length;
-    const nd=CYCLE[cycleIdx][0];signals[nd].state='green';cycleT=0;yellowPending=false;
+    // Transition: turn all signals red before setting next green
+    DIRS.forEach(d => signals[d].state='red');
+    cycleIdx=(cycleIdx+1)%CYCLE.length;
+    const nd=CYCLE[cycleIdx][0];
+    signals[nd].state='green';
+    cycleT=0;
+    yellowPending=false;
     DIRS.forEach(d=>{if(d!==nd&&signals[d].state!=='yellow')signals[d].state='red';});
     updateSigUI();addLog(`🚦 ${nd.toUpperCase()} → GREEN (30s)`,'info');
   }
