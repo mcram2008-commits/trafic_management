@@ -26,6 +26,9 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="btn btn-doc" id="btnDocs" onclick="openDocsModal()" style="padding: 6px 12px; height: 32px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); color: var(--accent); font-size: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: var(--font-head); letter-spacing: 0.5px; margin-right: 8px;">
+        <span>📖</span> SYSTEM DOCS
+      </button>
       <div class="header-stat">
         <span class="stat-val" id="uptime">99.8%</span>
         <span class="stat-lbl">Uptime</span>
@@ -156,7 +159,12 @@
       </div>
 
       <div class="event-log" id="eventLog">
-        <div class="log-title">📋 Event Log</div>
+        <div class="log-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>📋 Event Log</span>
+          <button onclick="clearLogs()" style="background: transparent; border: none; color: var(--text3); cursor: pointer; font-size: 9px; font-family: var(--font-head); letter-spacing: 0.5px; display: flex; align-items: center; gap: 3px; padding: 2px 4px; border-radius: 3px; border: 1px solid rgba(74, 122, 155, 0.2); outline: none;">
+            🗑️ Clear
+          </button>
+        </div>
         <div class="log-entries" id="logEntries">
           <div class="log-entry info">System initialized. Monitoring active.</div>
         </div>
@@ -333,7 +341,282 @@
     </aside>
   </main>
 
+  <!-- Documentation Modal Overlay -->
+  <div id="docsModal" class="modal-overlay" onclick="if(event.target===this) closeDocsModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">📖 System Algorithms & AI Documentation</h2>
+        <button class="modal-close" onclick="closeDocsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Tab Buttons -->
+        <div class="modal-tabs">
+          <button class="modal-tab-btn active" onclick="selectDocTab('overview')">Overview & Arch</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('vision')">AI & Vision Pipeline</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('rl')">Reinforcement Learning</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('genetic')">GA & NEAT Optimizers</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('tech')">Tech Stack & Datasets</button>
+        </div>
+
+        <!-- TAB 1: OVERVIEW & ARCHITECTURE -->
+        <div id="tab-overview" class="modal-tab-content active">
+          <div style="font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:16px;">
+            The <strong>AI Ambulance Priority Traffic Management System (APTMS)</strong> is a cutting-edge real-time traffic coordination solution. It leverages sensor fusion, Deep Learning (YOLOv8), Webster's delay calculations, Genetic Algorithms, and Reinforcement Learning (PPO) to dynamically optimize signal times and ensure immediate emergency vehicle preemption.
+          </div>
+          
+          <h3 class="panel-title" style="border-bottom: 1px solid var(--border2); padding-bottom: 6px; margin-bottom: 12px; font-size:11px; color:var(--accent);">📐 System Dataflow Pipeline</h3>
+          
+          <div class="doc-diagram">
+            <div class="diag-row">
+              <div class="diag-node highlight">📹 Intersection Cameras / Live Video</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node">👁️ YOLOv8 object detection & confidence filtering</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node">📐 Polygon Zone Counting / Queue Lengths</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node green">🚨 Emergency Vehicle Priority Detector</div>
+              <div class="diag-arrow">➡️</div>
+              <div class="diag-node red">⚡ Preemption Trigger (All Red, priority Green)</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node">🧠 PPO Agent Decision (Keep / Switch Signal)</div>
+              <div class="diag-arrow">↔️</div>
+              <div class="diag-node">🧬 GA Cycle Webster Optimizer</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node highlight">🚦 Smart Traffic Light Output & Live Dashboard</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: AI & VISION PIPELINE -->
+        <div id="tab-vision" class="modal-tab-content">
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">👁️ YOLOv8 Object Detection</div>
+              <div class="doc-card-body">
+                The visual recognition engine uses YOLOv8 (nano/small/medium checkpoints) to classify and count vehicles across multiple lanes in real-time.
+                <div class="badge-container">
+                  <span class="doc-badge">Car Detection</span>
+                  <span class="doc-badge">Bus / Truck</span>
+                  <span class="doc-badge">Motorcycle</span>
+                  <span class="doc-badge">95%+ Accuracy</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="doc-card">
+              <div class="doc-card-title">🚨 Emergency Vehicle Detection</div>
+              <div class="doc-card-body">
+                A custom fine-tuned YOLO model is deployed to identify emergency services in the video feeds.
+                <div class="badge-container">
+                  <span class="doc-badge red">Ambulance</span>
+                  <span class="doc-badge red">Fire Truck</span>
+                  <span class="doc-badge red">Police Vehicle</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-card" style="grid-column: 1 / -1;">
+              <div class="doc-card-title">⚙️ Computer Vision Processing Chain</div>
+              <div class="doc-card-body">
+                <ol class="doc-card-list">
+                  <li><strong>Confidence Filtering:</strong> Bounding boxes with a confidence score below 0.50 are filtered out to prevent false counts.</li>
+                  <li><strong>Polygon Zone Checking:</strong> Precise counting is limited to defined lanes (polygons). A ray-casting algorithm checks if the center point of a bounding box falls within the coordinates of the designated region.</li>
+                  <li><strong>Queue Length Estimation:</strong> Measures vehicle density by assessing wait times and clusters of stopped objects.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: REINFORCEMENT LEARNING -->
+        <div id="tab-rl" class="modal-tab-content">
+          <div style="font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:16px;">
+            APTMS uses <strong>Proximal Policy Optimization (PPO)</strong> (via Stable-Baselines3 and Gymnasium) for adaptive traffic signal control.
+          </div>
+          
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">📊 State Space (Observation)</div>
+              <div class="doc-card-body">
+                The environment observations capture the current traffic layout:
+                <ul class="doc-card-list">
+                  <li>Queue length per lane / approach</li>
+                  <li>Total waiting time of vehicles</li>
+                  <li>Current active traffic light state</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="doc-card">
+              <div class="doc-card-title">🎮 Action Space</div>
+              <div class="doc-card-body">
+                The agent determines the optimal next signal configuration:
+                <ul class="doc-card-list">
+                  <li><strong>KEEP GREEN:</strong> Extend the current phase (e.g., up to maximum threshold)</li>
+                  <li><strong>SWITCH SIGNAL:</strong> Transition to the next phase (triggers yellow light phase)</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="doc-card" style="grid-column: 1 / -1;">
+              <div class="doc-card-title">🏆 Reward Function Formulation</div>
+              <div class="doc-card-body">
+                The reward function pushes the system to reduce congestion:
+                <div style="background:var(--bg2); padding:8px 12px; border-radius:4px; border:1px solid var(--border2); font-family:monospace; margin-top:8px;">
+                  Reward = -w₁ × (Total Waiting Time) - w₂ × (Average Queue Length) - w₃ × (Emergency Delay)
+                </div>
+                <div style="margin-top:6px; font-size:10px; color:var(--text3);">
+                  *Where w₁, w₂, and w₃ are weighting parameters configured to prioritize ambulances and clear queues efficiently.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: GA & NEAT OPTIMIZERS -->
+        <div id="tab-genetic" class="modal-tab-content">
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">🧬 Webster's Delay Formula & Genetic Algorithm</div>
+              <div class="doc-card-body">
+                When global optimizations are triggered, a Genetic Algorithm computes timing offsets by modeling vehicle delay.
+                <div style="background:var(--bg2); padding:8px 12px; border-radius:4px; border:1px solid var(--border2); font-family:monospace; margin:8px 0; font-size:10px;">
+                  Delay (d) = c(1-g/c)² / 2(1-x) + x² / 2q(1-x) - 0.65(c/q²)^(1/3) × x^(2+5g/c)
+                </div>
+                The GA evaluates a population of 400 configurations across 25 generations to identify the set of phase timings that yields the lowest cumulative delay.
+                <div class="badge-container">
+                  <span class="doc-badge yellow">Webster Delay Model</span>
+                  <span class="doc-badge yellow">400 Population</span>
+                  <span class="doc-badge yellow">25 Generations</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="doc-card">
+              <div class="doc-card-title">🧠 NEAT (NeuroEvolution of Augmenting Topologies)</div>
+              <div class="doc-card-body">
+                The NEAT coordinator simulates green waves across adjacent intersections.
+                <ul class="doc-card-list">
+                  <li><strong>Evolving Topology:</strong> Neurons and connections grow dynamically to learn coordination policies.</li>
+                  <li><strong>Green Wave Sync:</strong> Maximizes throughput on straight corridors (e.g., North-South, East-West) by offset synchronization.</li>
+                  <li><strong>Efficiency Gains:</strong> Yields a ~35.5% reduction in overall stop-and-go delays under peak conditions.</li>
+                </ul>
+                <div class="badge-container">
+                  <span class="doc-badge green">Evolved Network</span>
+                  <span class="doc-badge green">Green Wave Synced</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: TECH STACK & DATASETS -->
+        <div id="tab-tech" class="modal-tab-content">
+          <h3 class="panel-title" style="border-bottom: 1px solid var(--border2); padding-bottom: 6px; margin-bottom: 12px; font-size:11px; color:var(--accent);">🛠️ Technical Frameworks</h3>
+          
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Tools / Libraries</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Computer Vision</strong></td>
+                <td>OpenCV, Ultralytics YOLOv8, PyTorch</td>
+              </tr>
+              <tr>
+                <td><strong>Reinforcement Learning</strong></td>
+                <td>Stable Baselines3, Gymnasium, SUMO RL</td>
+              </tr>
+              <tr>
+                <td><strong>Simulation & Visualization</strong></td>
+                <td>SUMO (Simulation of Urban Mobility), Three.js (WebGL), Unity 3D Engine</td>
+              </tr>
+              <tr>
+                <td><strong>Backend & Dashboard</strong></td>
+                <td>Flask API, Flask SocketIO, WebSockets</td>
+              </tr>
+              <tr>
+                <td><strong>Analysis & Graphing</strong></td>
+                <td>Matplotlib, Seaborn, Pandas, Numpy, Scipy</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 class="panel-title" style="border-bottom: 1px solid var(--border2); padding-bottom: 6px; margin-top: 18px; margin-bottom: 12px; font-size:11px; color:var(--accent);">📂 Datasets Integrated</h3>
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">🚗 COCO Dataset</div>
+              <div class="doc-card-body">
+                Used to pretrain the YOLOv8 detector on standard passenger vehicles, commercial buses, cargo trucks, and motorcycles.
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">🚑 Kaggle & Roboflow Emergency Datasets</div>
+              <div class="doc-card-body">
+                Custom emergency vehicle datasets used to train identification classifiers for ambulances, fire brigades, and police cars.
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">🛣️ BDD100K & UA-DETRAC</div>
+              <div class="doc-card-body">
+                Berkeley DeepDrive and UA-DETRAC datasets utilized for testing lane detection and queue density estimations under varying weather conditions.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <script src="images.js"></script>
   <script src="simulation.js"></script>
+  
+  <!-- Doc Modal controller scripts -->
+  <script>
+    function openDocsModal() {
+      const modal = document.getElementById('docsModal');
+      modal.classList.add('open');
+      modal.style.display = 'flex';
+      // Log event
+      addLog('📖 Opened System Documentation Viewer.', 'info');
+    }
+    function closeDocsModal() {
+      const modal = document.getElementById('docsModal');
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; }, 300);
+    }
+    function selectDocTab(tabName) {
+      // Hide all contents
+      const contents = document.querySelectorAll('.modal-tab-content');
+      contents.forEach(c => c.classList.remove('active'));
+      
+      // Deactivate all buttons
+      const buttons = document.querySelectorAll('.modal-tab-btn');
+      buttons.forEach(b => b.classList.remove('active'));
+      
+      // Activate selected
+      document.getElementById('tab-' + tabName).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+    function clearLogs() {
+      const c = document.getElementById('logEntries');
+      c.innerHTML = '<div class="log-entry info">[' + new Date().toLocaleTimeString() + '] System events log cleared.</div>';
+    }
+  </script>
 </body>
 </html>
