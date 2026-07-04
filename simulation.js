@@ -1072,6 +1072,8 @@ function tickAmb(dt){
       }
       break;
   }
+  const preemptedRoad = CYCLE[cycleIdx][0];
+  signals[preemptedRoad].timer = signals[AMB.dir].timer;
 }
 
 /* ── Controls ────────────────────────────────────────────── */
@@ -1084,8 +1086,19 @@ function triggerAmbulance(){
   AMB.pos=120;AMB.active=true;AMB.spd=32;
   
   // PREEMPTION: Instantly switch signals!
-  DIRS.forEach(d=>{signals[d].state='red';signals[d].timer=0;});
-  signals[AMB.dir].state='green';signals[AMB.dir].timer=30;
+  const preemptedRoad = CYCLE[cycleIdx][0];
+  DIRS.forEach(d=>{
+    if(d === AMB.dir) {
+      signals[d].state='green';
+      signals[d].timer=30;
+    } else if(d === preemptedRoad) {
+      signals[d].state='yellow';
+      signals[d].timer=30;
+    } else {
+      signals[d].state='red';
+      signals[d].timer=0;
+    }
+  });
   updateSigUI();highlightPriority();
 
   phase='detecting';ambPhaseTimer=0;detectionProgress=0;detectionStart=performance.now();
