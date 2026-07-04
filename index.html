@@ -106,12 +106,15 @@
 
       <!-- AI Training monitor -->
       <div class="sensor-card" id="aiTrainingCard" style="margin-top: 10px;">
-        <div class="sensor-header" style="justify-content: space-between; display: flex;">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center;">
           <div style="display: flex; align-items: center; gap: 6px;">
             <span class="sensor-icon">🧠</span>
             <span class="sensor-name">AI Training Monitor</span>
           </div>
-          <span class="sensor-status locked" id="trainStatus" style="background: #00ff8820; color: #00ff88; border-color: #00ff8840;">MONITOR</span>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <button id="btnTrainMode" onclick="toggleTrainingMode()" style="background: rgba(0, 212, 255, 0.12); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.3); font-size: 8px; font-family: monospace; border-radius: 3px; cursor: pointer; padding: 2px 5px; height: 16px; display: flex; align-items: center;">TRAFFIC</button>
+            <span class="sensor-status locked" id="trainStatus" style="background: #00ff8820; color: #00ff88; border-color: #00ff8840; height: 16px; padding: 0 4px; display: flex; align-items: center; font-size: 9px;">MONITOR</span>
+          </div>
         </div>
         <div style="text-align: center; margin: 8px 0; background: #060e18; border-radius: 6px; padding: 4px; border: 1px solid #1a3a5c; position: relative; overflow: hidden; height: 94px; display: flex; align-items: center; justify-content: center;">
           <canvas id="trainingCanvas" width="220" height="84" style="background: #040810; border-radius: 4px;"></canvas>

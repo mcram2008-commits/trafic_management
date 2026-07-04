@@ -1020,11 +1020,40 @@ const trainCtx = trainCanvas ? trainCanvas.getContext('2d') : null;
 let trainAngle = 0;
 let trainTypeIdx = 0;
 let trainAngleMode = 0; // 0=Side, 1=Front, 2=Top-down
+let trainMode = 'traffic'; // 'traffic' or 'document'
 const trainTypes = ['car', 'bike', 'suv', 'truck', 'bus', 'van', 'auto', 'ambulance'];
+const docTypes = ['title', 'paragraph', 'table', 'figure', 'header', 'footer', 'equation'];
 let isTrainingActive = false;
 let trainingProgress = 1.0;
 let trainingEpoch = 150;
 let trainingLoss = 0.009;
+
+function toggleTrainingMode() {
+  if (isTrainingActive) return;
+  trainMode = trainMode === 'traffic' ? 'document' : 'traffic';
+  trainTypeIdx = 0;
+  
+  const btn = document.getElementById('btnTrainMode');
+  if (trainMode === 'traffic') {
+    btn.textContent = 'TRAFFIC';
+    btn.style.color = '#00d4ff';
+    btn.style.borderColor = 'rgba(0, 212, 255, 0.3)';
+    btn.style.background = 'rgba(0, 212, 255, 0.12)';
+    document.getElementById('trainClass').textContent = 'Class: CAR';
+    document.getElementById('trainAngles').textContent = 'Angles: 0°, 90°, 180°, 270°';
+    addLog('🧠 AI Training Monitor switched to Traffic Analysis mode.', 'info');
+  } else {
+    btn.textContent = 'DOCUMENT';
+    btn.style.color = '#ffd700';
+    btn.style.borderColor = 'rgba(255, 215, 0, 0.3)';
+    btn.style.background = 'rgba(255, 215, 0, 0.12)';
+    document.getElementById('trainClass').textContent = 'Class: TITLE';
+    document.getElementById('trainAngles').textContent = 'PDF Layout: Columns, Tables';
+    addLog('🧠 AI Training Monitor switched to Document Layout Extraction mode.', 'warning');
+    addLog('📄 Roboflow Layout & VT PDF Object Detection datasets loaded.', 'info');
+  }
+  updateTrainingCanvas();
+}
 
 function updateTrainingCanvas() {
   if (!trainCtx) return;
@@ -1043,177 +1072,202 @@ function updateTrainingCanvas() {
     trainAngle += 0.09;
   }
 
-  const type = trainTypes[trainTypeIdx];
-  const col = VCOL[type] ? VCOL[type][0] : '#ffffff';
+  const typesList = trainMode === 'traffic' ? trainTypes : docTypes;
+  const type = typesList[trainTypeIdx];
   
-  // Swap context
-  const oldCtx = ctx;
-  ctx = trainCtx;
-  
-  try {
-    if (type === 'ambulance') {
-      if (trainAngleMode === 0) {
-        // Draw Side View of Force Traveler Ambulance
-        trainCtx.save();
-        trainCtx.translate(tc.width/2, tc.height/2 + 2);
-        
-        // Shadow
-        trainCtx.fillStyle = 'rgba(0,10,25,0.22)';
-        trainCtx.beginPath(); trainCtx.ellipse(0, 16, 38, 5, 0, 0, Math.PI*2); trainCtx.fill();
-        
-        // White Body
-        trainCtx.fillStyle = '#ffffff';
-        trainCtx.beginPath(); trainCtx.roundRect(-36, -18, 72, 30, 4); trainCtx.fill();
-        trainCtx.strokeStyle = '#9ca4ac'; trainCtx.lineWidth = 1; trainCtx.stroke();
-        
-        // Yellow Grille & Bonnet Area (Force Traveler style)
-        trainCtx.fillStyle = '#ffd000';
-        trainCtx.beginPath(); trainCtx.roundRect(14, -6, 22, 18, [0, 4, 4, 0]); trainCtx.fill();
-        trainCtx.strokeStyle = '#ffd000'; trainCtx.stroke();
-        
-        // Wheels
-        trainCtx.fillStyle = '#181818';
-        trainCtx.beginPath(); trainCtx.arc(-18, 12, 8, 0, Math.PI*2); trainCtx.fill();
-        trainCtx.beginPath(); trainCtx.arc(16, 12, 8, 0, Math.PI*2); trainCtx.fill();
-        trainCtx.fillStyle = '#7a8590';
-        trainCtx.beginPath(); trainCtx.arc(-18, 12, 4, 0, Math.PI*2); trainCtx.fill();
-        trainCtx.beginPath(); trainCtx.arc(16, 12, 4, 0, Math.PI*2); trainCtx.fill();
-        
-        // Windows (Driver + Side Compartment)
-        trainCtx.fillStyle = 'rgba(165,222,255,0.7)';
-        trainCtx.beginPath(); trainCtx.roundRect(16, -14, 12, 9, 2); trainCtx.fill();
-        trainCtx.beginPath(); trainCtx.roundRect(-2, -14, 14, 9, 1); trainCtx.fill();
-        trainCtx.beginPath(); trainCtx.roundRect(-24, -14, 18, 9, 1); trainCtx.fill();
-        
-        // Red and Yellow side checkers
-        for(let i=0; i<8; i++) {
-          trainCtx.fillStyle = i % 2 === 0 ? '#ffd000' : '#cc1133';
-          trainCtx.fillRect(-34 + i*6, -1, 6, 6);
+  if (trainMode === 'traffic') {
+    const col = VCOL[type] ? VCOL[type][0] : '#ffffff';
+    const oldCtx = ctx;
+    ctx = trainCtx;
+    try {
+      if (type === 'ambulance') {
+        if (trainAngleMode === 0) {
+          trainCtx.save();
+          trainCtx.translate(tc.width/2, tc.height/2 + 2);
+          trainCtx.fillStyle = 'rgba(0,10,25,0.22)';
+          trainCtx.beginPath(); trainCtx.ellipse(0, 16, 38, 5, 0, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#ffffff';
+          trainCtx.beginPath(); trainCtx.roundRect(-36, -18, 72, 30, 4); trainCtx.fill();
+          trainCtx.strokeStyle = '#9ca4ac'; trainCtx.lineWidth = 1; trainCtx.stroke();
+          trainCtx.fillStyle = '#ffd000';
+          trainCtx.beginPath(); trainCtx.roundRect(14, -6, 22, 18, [0, 4, 4, 0]); trainCtx.fill();
+          trainCtx.strokeStyle = '#ffd000'; trainCtx.stroke();
+          trainCtx.fillStyle = '#181818';
+          trainCtx.beginPath(); trainCtx.arc(-18, 12, 8, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.arc(16, 12, 8, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#7a8590';
+          trainCtx.beginPath(); trainCtx.arc(-18, 12, 4, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.arc(16, 12, 4, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = 'rgba(165,222,255,0.7)';
+          trainCtx.beginPath(); trainCtx.roundRect(16, -14, 12, 9, 2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.roundRect(-2, -14, 14, 9, 1); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.roundRect(-24, -14, 18, 9, 1); trainCtx.fill();
+          for(let i=0; i<8; i++) {
+            trainCtx.fillStyle = i % 2 === 0 ? '#ffd000' : '#cc1133';
+            trainCtx.fillRect(-34 + i*6, -1, 6, 6);
+          }
+          trainCtx.fillStyle = '#0055cc';
+          trainCtx.beginPath(); trainCtx.arc(-15, 7, 3, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#cc1133'; trainCtx.font = 'bold 5px Arial';
+          trainCtx.fillText('AMBULANCE', -25, 7);
+          trainCtx.fillStyle = '#0f22ee';
+          trainCtx.fillRect(10, -22, 10, 4);
+          trainCtx.fillStyle = 'rgba(60,60,60,0.8)';
+          trainCtx.fillRect(8, -21, 14, 3);
+          trainCtx.restore();
+        } else if (trainAngleMode === 1) {
+          trainCtx.save();
+          trainCtx.translate(tc.width/2, tc.height/2 + 2);
+          trainCtx.fillStyle = 'rgba(0,10,25,0.22)';
+          trainCtx.beginPath(); trainCtx.ellipse(0, 18, 24, 4, 0, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = '#ffffff';
+          trainCtx.beginPath(); trainCtx.roundRect(-20, -22, 40, 39, 4); trainCtx.fill();
+          trainCtx.strokeStyle = '#9ca4ac'; trainCtx.lineWidth = 1; trainCtx.stroke();
+          trainCtx.fillStyle = '#ffd000';
+          trainCtx.beginPath(); trainCtx.roundRect(-20, 0, 40, 17, [0, 0, 4, 4]); trainCtx.fill();
+          trainCtx.fillStyle = '#1c1d22';
+          trainCtx.beginPath(); trainCtx.roundRect(-12, 3, 24, 8, 2); trainCtx.fill();
+          trainCtx.fillStyle = '#ffd000'; trainCtx.font = 'bold 6px Arial'; trainCtx.textAlign = 'center';
+          trainCtx.fillText('F', 0, 9);
+          trainCtx.fillStyle = '#ffffcc';
+          trainCtx.beginPath(); trainCtx.arc(-16, 7, 2.5, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.beginPath(); trainCtx.arc(16, 7, 2.5, 0, Math.PI*2); trainCtx.fill();
+          trainCtx.fillStyle = 'rgba(165,222,255,0.72)';
+          trainCtx.beginPath(); trainCtx.roundRect(-16, -16, 32, 13, 2); trainCtx.fill();
+          trainCtx.fillStyle = '#1c1d22';
+          trainCtx.fillRect(-23, -12, 3, 7);
+          trainCtx.fillRect(20, -12, 3, 7);
+          const flash = Math.sin(performance.now()/80)>0;
+          trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
+          trainCtx.fillRect(-12, -26, 24, 4);
+          trainCtx.fillStyle = '#cc0011'; trainCtx.font = 'bold 5px Arial';
+          trainCtx.fillText('AMBULANCE', 0, -2);
+          trainCtx.restore();
+        } else {
+          trainCtx.save();
+          trainCtx.translate(tc.width/2, tc.height/2);
+          trainCtx.rotate(trainAngle);
+          const w = 24, h = 48;
+          trainCtx.fillStyle = '#ffffff'; trainCtx.beginPath(); trainCtx.roundRect(-w/2, -h/2, w, h, 4); trainCtx.fill();
+          trainCtx.strokeStyle = 'rgba(0,0,0,0.3)'; trainCtx.lineWidth = 0.7; trainCtx.stroke();
+          trainCtx.fillStyle = '#ffd000'; trainCtx.beginPath(); trainCtx.roundRect(-w/2+0.5, -h/2+0.5, w-1, 13, [3, 3, 0, 0]); trainCtx.fill();
+          trainCtx.fillStyle = 'rgba(165,222,255,0.85)'; trainCtx.beginPath(); trainCtx.roundRect(-w/2+2.5, -h/2+11, w-5, 8, 1.5); trainCtx.fill();
+          const t_cw = 2.5, t_ch = 4.5;
+          for(let i=0; i<4; i++) {
+            trainCtx.fillStyle = i % 2 === 0 ? '#ffd000' : '#cc1133';
+            trainCtx.fillRect(-w/2, -6 + i*t_ch, t_cw, t_ch);
+            trainCtx.fillRect(w/2 - t_cw, -6 + i*t_ch, t_cw, t_ch);
+          }
+          trainCtx.fillStyle = '#0055cc';
+          trainCtx.beginPath(); trainCtx.arc(0, 10, 4, 0, Math.PI*2); trainCtx.fill();
+          const flash = Math.sin(performance.now()/80) > 0;
+          trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
+          trainCtx.fillRect(-w/2+3, -h/2-4, w-6, 4);
+          trainCtx.restore();
         }
-        
-        // Blue Star of life logo on side
-        trainCtx.fillStyle = '#0055cc';
-        trainCtx.beginPath(); trainCtx.arc(-15, 7, 3, 0, Math.PI*2); trainCtx.fill();
-        
-        // "AMBULANCE" text on side
-        trainCtx.fillStyle = '#cc1133'; trainCtx.font = 'bold 5px Arial';
-        trainCtx.fillText('AMBULANCE', -25, 7);
-        
-        // Blue Lightbar on top
-        trainCtx.fillStyle = '#0f22ee';
-        trainCtx.fillRect(10, -22, 10, 4);
-        trainCtx.fillStyle = 'rgba(60,60,60,0.8)';
-        trainCtx.fillRect(8, -21, 14, 3);
-        
-        trainCtx.restore();
-        
-      } else if (trainAngleMode === 1) {
-        // Draw Front View of Force Traveler Ambulance
-        trainCtx.save();
-        trainCtx.translate(tc.width/2, tc.height/2 + 2);
-        
-        // Shadow
-        trainCtx.fillStyle = 'rgba(0,10,25,0.22)';
-        trainCtx.beginPath(); trainCtx.ellipse(0, 18, 24, 4, 0, 0, Math.PI*2); trainCtx.fill();
-        
-        // White Body Frame
-        trainCtx.fillStyle = '#ffffff';
-        trainCtx.beginPath(); trainCtx.roundRect(-20, -22, 40, 39, 4); trainCtx.fill();
-        trainCtx.strokeStyle = '#9ca4ac'; trainCtx.lineWidth = 1; trainCtx.stroke();
-        
-        // Yellow Grille & Bonnet Area (Force Traveler style)
-        trainCtx.fillStyle = '#ffd000';
-        trainCtx.beginPath(); trainCtx.roundRect(-20, 0, 40, 17, [0, 0, 4, 4]); trainCtx.fill();
-        
-        // Black Radiator Grille
-        trainCtx.fillStyle = '#1c1d22';
-        trainCtx.beginPath(); trainCtx.roundRect(-12, 3, 24, 8, 2); trainCtx.fill();
-        
-        // Force logo in center
-        trainCtx.fillStyle = '#ffd000'; trainCtx.font = 'bold 6px Arial'; trainCtx.textAlign = 'center';
-        trainCtx.fillText('F', 0, 9);
-        
-        // Headlights
-        trainCtx.fillStyle = '#ffffcc';
-        trainCtx.beginPath(); trainCtx.arc(-16, 7, 2.5, 0, Math.PI*2); trainCtx.fill();
-        trainCtx.beginPath(); trainCtx.arc(16, 7, 2.5, 0, Math.PI*2); trainCtx.fill();
-        
-        // Windshield
-        trainCtx.fillStyle = 'rgba(165,222,255,0.72)';
-        trainCtx.beginPath(); trainCtx.roundRect(-16, -16, 32, 13, 2); trainCtx.fill();
-        
-        // Side mirrors
-        trainCtx.fillStyle = '#1c1d22';
-        trainCtx.fillRect(-23, -12, 3, 7);
-        trainCtx.fillRect(20, -12, 3, 7);
-        
-        // Blue flashing lightbar on roof
-        const flash = Math.sin(performance.now()/80)>0;
-        trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
-        trainCtx.fillRect(-12, -26, 24, 4);
-        
-        // "AMBULANCE" text on yellow hood
-        trainCtx.fillStyle = '#cc0011'; trainCtx.font = 'bold 5px Arial';
-        trainCtx.fillText('AMBULANCE', 0, -2);
-        
-        trainCtx.restore();
-        
       } else {
-        // Draw Top-Down View of Force Traveler Ambulance
         trainCtx.save();
         trainCtx.translate(tc.width/2, tc.height/2);
         trainCtx.rotate(trainAngle);
-        
-        const w = 24, h = 48;
-        // White body
-        trainCtx.fillStyle = '#ffffff'; trainCtx.beginPath(); trainCtx.roundRect(-w/2, -h/2, w, h, 4); trainCtx.fill();
-        trainCtx.strokeStyle = 'rgba(0,0,0,0.3)'; trainCtx.lineWidth = 0.7; trainCtx.stroke();
-        
-        // Yellow bonnet
-        trainCtx.fillStyle = '#ffd000'; trainCtx.beginPath(); trainCtx.roundRect(-w/2+0.5, -h/2+0.5, w-1, 13, [3, 3, 0, 0]); trainCtx.fill();
-        
-        // Windshield
-        trainCtx.fillStyle = 'rgba(165,222,255,0.85)'; trainCtx.beginPath(); trainCtx.roundRect(-w/2+2.5, -h/2+11, w-5, 8, 1.5); trainCtx.fill();
-        
-        // Red/Yellow checkers along side edges
-        const t_cw = 2.5, t_ch = 4.5;
-        for(let i=0; i<4; i++) {
-          trainCtx.fillStyle = i % 2 === 0 ? '#ffd000' : '#cc1133';
-          trainCtx.fillRect(-w/2, -6 + i*t_ch, t_cw, t_ch);
-          trainCtx.fillRect(w/2 - t_cw, -6 + i*t_ch, t_cw, t_ch);
-        }
-        
-        // Blue Symbol
-        trainCtx.fillStyle = '#0055cc';
-        trainCtx.beginPath(); trainCtx.arc(0, 10, 4, 0, Math.PI*2); trainCtx.fill();
-        
-        // Flashing blue lightbar
-        const flash = Math.sin(performance.now()/80) > 0;
-        trainCtx.fillStyle = flash ? '#0f22ee' : '#cc1133';
-        trainCtx.fillRect(-w/2+3, -h/2-4, w-6, 4);
-        
+        const spec = VSPEC[type];
+        const scale = 0.65;
+        VDRAW[type](spec.wid*scale, spec.len*scale, col, 10);
         trainCtx.restore();
       }
-    } else {
-      trainCtx.save();
-      trainCtx.translate(tc.width/2, tc.height/2);
-      trainCtx.rotate(trainAngle);
-      const spec = VSPEC[type];
-      const scale = 0.65;
-      VDRAW[type](spec.wid*scale, spec.len*scale, col, 10);
-      trainCtx.restore();
+    } catch(e) {
+      console.error(e);
+    } finally {
+      ctx = oldCtx;
     }
-  } catch(e) {
-    console.error(e);
-  } finally {
-    ctx = oldCtx;
+  } else {
+    // DOCUMENT LAYOUT EXTRACTION DRAWING MODE
+    trainCtx.save();
+    trainCtx.translate(tc.width/2, tc.height/2);
+    
+    // Draw Simulated Scan Page Sheet
+    trainCtx.fillStyle = '#ffffff';
+    trainCtx.beginPath(); trainCtx.roundRect(-28, -38, 56, 76, 1); trainCtx.fill();
+    trainCtx.strokeStyle = '#1e3046'; trainCtx.lineWidth = 1; trainCtx.stroke();
+    
+    // Header
+    trainCtx.fillStyle = type === 'header' ? 'rgba(255, 215, 0, 0.55)' : '#d0d6dd';
+    trainCtx.fillRect(-22, -34, 44, 2);
+    
+    // Title Block
+    trainCtx.fillStyle = type === 'title' ? 'rgba(255, 215, 0, 0.55)' : '#9ca4b0';
+    trainCtx.fillRect(-18, -28, 36, 4);
+    
+    // Paragraph Block
+    trainCtx.fillStyle = type === 'paragraph' ? 'rgba(255, 215, 0, 0.55)' : '#e4e8ec';
+    trainCtx.fillRect(-22, -20, 20, 2);
+    trainCtx.fillRect(-22, -16, 20, 2);
+    trainCtx.fillRect(-22, -12, 14, 2);
+    trainCtx.fillRect(2, -20, 20, 2);
+    trainCtx.fillRect(2, -16, 20, 2);
+    trainCtx.fillRect(2, -12, 18, 2);
+    
+    // Table Grid
+    if (type === 'table') {
+      trainCtx.fillStyle = 'rgba(255, 215, 0, 0.28)';
+      trainCtx.fillRect(-22, -6, 44, 16);
+      trainCtx.strokeStyle = '#ffd700'; trainCtx.lineWidth = 0.8;
+      trainCtx.strokeRect(-22, -6, 44, 16);
+      trainCtx.beginPath();
+      trainCtx.moveTo(-22, -1); trainCtx.lineTo(22, -1);
+      trainCtx.moveTo(-22, 4); trainCtx.lineTo(22, 4);
+      trainCtx.moveTo(-22, 9); trainCtx.lineTo(22, 9);
+      trainCtx.moveTo(-8, -6); trainCtx.lineTo(-8, 10);
+      trainCtx.moveTo(8, -6); trainCtx.lineTo(8, 10);
+      trainCtx.stroke();
+    } else {
+      trainCtx.strokeStyle = '#d4dce4'; trainCtx.lineWidth = 0.5;
+      trainCtx.strokeRect(-22, -6, 44, 16);
+    }
+    
+    // Figure Box
+    if (type === 'figure') {
+      trainCtx.fillStyle = 'rgba(255, 215, 0, 0.28)';
+      trainCtx.fillRect(-22, 14, 20, 16);
+      trainCtx.strokeStyle = '#ffd700'; trainCtx.lineWidth = 0.8;
+      trainCtx.strokeRect(-22, 14, 20, 16);
+      trainCtx.beginPath();
+      trainCtx.moveTo(-22, 14); trainCtx.lineTo(-2, 30);
+      trainCtx.moveTo(-2, 14); trainCtx.lineTo(-22, 30);
+      trainCtx.stroke();
+    } else {
+      trainCtx.strokeStyle = '#d4dce4'; trainCtx.lineWidth = 0.5;
+      trainCtx.strokeRect(-22, 14, 20, 16);
+    }
+    
+    // Centered Equation Block
+    trainCtx.fillStyle = type === 'equation' ? 'rgba(255, 215, 0, 0.55)' : '#a4acb4';
+    trainCtx.fillRect(2, 21, 20, 2);
+    
+    // Footer
+    trainCtx.fillStyle = type === 'footer' ? 'rgba(255, 215, 0, 0.55)' : '#d0d6dd';
+    trainCtx.fillRect(-22, 32, 44, 1.5);
+    
+    trainCtx.restore();
   }
 
   // Bounding box overlay
   trainCtx.save();
-  const boxW = 54, boxH = 74;
-  const bx = tc.width/2 - boxW/2;
-  const by = tc.height/2 - boxH/2;
+  let boxW = 54, boxH = 74;
+  let bx = tc.width/2 - boxW/2;
+  let by = tc.height/2 - boxH/2;
+  
+  if (trainMode === 'document') {
+    let elX = tc.width/2, elY = tc.height/2;
+    if (type === 'header') { boxW = 48; boxH = 8; elY = tc.height/2 - 33; }
+    else if (type === 'title') { boxW = 40; boxH = 10; elY = tc.height/2 - 26; }
+    else if (type === 'paragraph') { boxW = 48; boxH = 16; elY = tc.height/2 - 14; }
+    else if (type === 'table') { boxW = 48; boxH = 20; elY = tc.height/2 + 2; }
+    else if (type === 'figure') { boxW = 24; boxH = 20; elX = tc.width/2 - 12; elY = tc.height/2 + 22; }
+    else if (type === 'equation') { boxW = 24; boxH = 8; elX = tc.width/2 + 12; elY = tc.height/2 + 22; }
+    else if (type === 'footer') { boxW = 48; boxH = 8; elY = tc.height/2 + 33; }
+    bx = elX - boxW/2;
+    by = elY - boxH/2;
+  }
   
   const scanY = by + (boxH/2) + Math.sin(performance.now()/200) * (boxH/2);
   trainCtx.strokeStyle = isTrainingActive ? 'rgba(0,255,136,0.35)' : 'rgba(0,212,255,0.25)';
@@ -1226,12 +1280,12 @@ function updateTrainingCanvas() {
   
   trainCtx.fillStyle = isTrainingActive ? '#ffd700' : '#00ff88';
   trainCtx.font = 'bold 8px monospace';
-  const conf = isTrainingActive ? (55 + Math.random()*42).toFixed(1) : '99.4';
+  const conf = isTrainingActive ? (55 + Math.random()*42).toFixed(1) : '99.1';
   trainCtx.fillText(`${type.toUpperCase()}: ${conf}%`, bx, by - 4);
 
   // Dots
   trainCtx.fillStyle = '#ff3355';
-  [[bx,by],[bx+boxW,by],[bx,by+boxH],[bx+boxW,by+boxH],[tc.width/2, tc.height/2]].forEach(([kx,ky])=>{
+  [[bx,by],[bx+boxW,by],[bx,by+boxH],[bx+boxW,by+boxH],[bx+boxW/2, by+boxH/2]].forEach(([kx,ky])=>{
     trainCtx.beginPath(); trainCtx.arc(kx, ky, 2, 0, Math.PI*2); trainCtx.fill();
   });
   
@@ -1239,18 +1293,19 @@ function updateTrainingCanvas() {
 }
 
 function tickTraining(dt) {
+  const typesList = trainMode === 'traffic' ? trainTypes : docTypes;
   if (!isTrainingActive) {
     if (Math.random() < 0.005) {
-      trainTypeIdx = (trainTypeIdx + 1) % trainTypes.length;
+      trainTypeIdx = (trainTypeIdx + 1) % typesList.length;
     }
     
     // Cycle view modes for ambulance slowly when idle
-    if (trainTypes[trainTypeIdx] === 'ambulance' && Math.random() < 0.015) {
+    if (trainMode === 'traffic' && typesList[trainTypeIdx] === 'ambulance' && Math.random() < 0.015) {
       trainAngleMode = (trainAngleMode + 1) % 3;
     }
     
-    const type = trainTypes[trainTypeIdx].toUpperCase();
-    const viewSuffix = trainTypes[trainTypeIdx] === 'ambulance' ? ` (${['SIDE', 'FRONT', 'TOP'][trainAngleMode]} VIEW)` : '';
+    const type = typesList[trainTypeIdx].toUpperCase();
+    const viewSuffix = (trainMode === 'traffic' && typesList[trainTypeIdx] === 'ambulance') ? ` (${['SIDE', 'FRONT', 'TOP'][trainAngleMode]} VIEW)` : '';
     document.getElementById('trainClass').textContent = `Class: ${type}${viewSuffix}`;
     
     updateTrainingCanvas();
@@ -1273,7 +1328,11 @@ function tickTraining(dt) {
     document.getElementById('trainBar').style.width = '100%';
     document.getElementById('btnRetrain').disabled = false;
     
-    addLog('🎉 AI retrained on all vehicles & angles (0°,90°,180°,270°)! Accuracy: 99.4%', 'success');
+    if (trainMode === 'traffic') {
+      addLog('🎉 AI retrained on all vehicles & angles (0°,90°,180°,270°)! Accuracy: 99.4%', 'success');
+    } else {
+      addLog('🎉 AI Document Structure model retrained on layout datasets! Accuracy: 99.1%', 'success');
+    }
   } else {
     const pct = Math.round(trainingProgress * 100);
     document.getElementById('trainBar').style.width = pct + '%';
@@ -1284,16 +1343,22 @@ function tickTraining(dt) {
     document.getElementById('trainEpoch').textContent = `Epoch: ${trainingEpoch}/150`;
     document.getElementById('trainLoss').textContent = `Loss: ${trainingLoss.toFixed(4)}`;
     
-    if (Math.floor(performance.now()/220) % trainTypes.length !== trainTypeIdx) {
-      trainTypeIdx = (trainTypeIdx + 1) % trainTypes.length;
-      trainAngleMode = Math.floor(Math.random() * 3); // random view mode
+    if (Math.floor(performance.now()/220) % typesList.length !== trainTypeIdx) {
+      trainTypeIdx = (trainTypeIdx + 1) % typesList.length;
+      if (trainMode === 'traffic') {
+        trainAngleMode = Math.floor(Math.random() * 3); // random view mode
+      }
       
-      const type = trainTypes[trainTypeIdx].toUpperCase();
-      const viewSuffix = trainTypes[trainTypeIdx] === 'ambulance' ? ` (${['SIDE', 'FRONT', 'TOP'][trainAngleMode]} VIEW)` : '';
+      const type = typesList[trainTypeIdx].toUpperCase();
+      const viewSuffix = (trainMode === 'traffic' && typesList[trainTypeIdx] === 'ambulance') ? ` (${['SIDE', 'FRONT', 'TOP'][trainAngleMode]} VIEW)` : '';
       document.getElementById('trainClass').textContent = `Class: ${type}${viewSuffix}`;
       
       if (Math.random() < 0.28) {
-        addLog(`[AI] Training angles (0°, 90°, 180°, 270°) for ${trainTypes[trainTypeIdx].toUpperCase()}...`, 'info');
+        if (trainMode === 'traffic') {
+          addLog(`[AI] Training angles (0°, 90°, 180°, 270°) for ${typesList[trainTypeIdx].toUpperCase()}...`, 'info');
+        } else {
+          addLog(`[AI] Training layout structure parsing for ${typesList[trainTypeIdx].toUpperCase()}...`, 'info');
+        }
       }
     }
   }
@@ -1310,7 +1375,11 @@ function startAITraining() {
   document.getElementById('trainStatus').style.color = '#ffd700';
   document.getElementById('trainStatus').style.borderColor = '#ffd70040';
   
-  addLog('⚙️ RETRAINING AI MODEL on 8 classes across multiple angles...', 'warning');
+  if (trainMode === 'traffic') {
+    addLog('⚙️ RETRAINING AI MODEL on 8 classes across multiple angles...', 'warning');
+  } else {
+    addLog('⚙️ RETRAINING DOCUMENT LAYOUT AI MODEL on 7 structural elements...', 'warning');
+  }
 }
 
 /* ── Init ─────────────────────────────────────────────────── */
