@@ -672,21 +672,100 @@ function drawGrid(){
 function drawRoad(){
   const cx=canvas.width/2,cy=canvas.height/2,W=canvas.width,H=canvas.height;
   const hw=Math.min(W,H)*0.09;
-  ctx.fillStyle='#1a2230';ctx.fillRect(0,cy-hw,W,hw*2);ctx.fillRect(cx-hw,0,hw*2,H);
-  ctx.fillStyle='#1e2a3c';ctx.fillRect(cx-hw,cy-hw,hw*2,hw*2);
-  // road surface texture
-  ctx.save();ctx.globalAlpha=0.022;
-  for(let i=0;i<60;i++){ctx.fillStyle='#fff';ctx.fillRect(Math.random()*W,Math.random()*H,Math.random()*4+1,1);}
+  
+  // 1. Grass background (Bright Pygame green)
+  ctx.fillStyle='#a1cc1a';
+  ctx.fillRect(0,0,W,H);
+
+  // Helper for drawing Pygame-style houses
+  const drawHouse = (x, y) => {
+    ctx.fillStyle='#eaeaea'; ctx.fillRect(x-12, y-6, 24, 15);
+    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=0.5; ctx.strokeRect(x-12, y-6, 24, 15);
+    ctx.fillStyle='#d33'; ctx.beginPath();
+    ctx.moveTo(x-15, y-6); ctx.lineTo(x, y-16); ctx.lineTo(x+15, y-6);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#531'; ctx.fillRect(x-3, y+3, 6, 6); // door
+  };
+
+  // Helper for drawing commercial blocks
+  const drawBuilding = (x, y, w, h) => {
+    ctx.fillStyle='#f0f3f4'; ctx.fillRect(x-w/2, y-h/2, w, h);
+    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=0.8; ctx.strokeRect(x-w/2, y-h/2, w, h);
+    ctx.fillStyle='#e74c3c'; ctx.fillRect(x-w/2, y-h/2, w, 5); // roof trim
+  };
+
+  // 2. Draw Environmental Details (Prit2341 Pygame map blocks)
+  // Top-Left corner: Houses
+  drawHouse(cx - hw - 85, cy - hw - 42);
+  drawHouse(cx - hw - 45, cy - hw - 65);
+  drawHouse(cx - hw - 125, cy - hw - 52);
+
+  // Top-Right corner: Houses & Building
+  drawHouse(cx + hw + 45, cy - hw - 42);
+  drawHouse(cx + hw + 105, cy - hw - 65);
+  drawBuilding(cx + hw + 75, cy - hw - 18, 48, 22);
+
+  // Bottom-Left corner: Building & House
+  drawBuilding(cx - hw - 75, cy + hw + 55, 52, 24);
+  drawHouse(cx - hw - 125, cy + hw + 50);
+
+  // Bottom-Right corner: Houses
+  drawHouse(cx + hw + 45, cy + hw + 48);
+  drawHouse(cx + hw + 105, cy + hw + 48);
+  drawBuilding(cx + hw + 75, cy + hw + 18, 48, 22);
+
+  // Middle-Left Block: Parking Lot
+  ctx.fillStyle='#34495e'; ctx.beginPath(); ctx.roundRect(cx - hw - 100, cy - hw + 8, 80, 48, 4); ctx.fill();
+  ctx.strokeStyle='#2c3e50'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=0.8;
+  for(let x=cx-hw-90; x<cx-hw-30; x+=12) {
+    ctx.beginPath(); ctx.moveTo(x, cy-hw+12); ctx.lineTo(x, cy-hw+24); ctx.stroke();
+  }
+  const carCols = ['#cc3333','#ffd700','#22aa55','#3355cc'];
+  for(let i=0; i<4; i++) {
+    if(i !== 1) {
+      ctx.fillStyle = carCols[i];
+      ctx.fillRect(cx-hw-88+i*12, cy-hw+14, 8, 10);
+    }
+  }
+
+  // Middle-Right Block: Soccer Football Pitch Stadium
+  ctx.fillStyle='#1e3f20'; ctx.strokeStyle='#ffffff60'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect(cx + hw + 15, cy - hw + 10, 78, 42, 20); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#2e7d32'; ctx.beginPath(); ctx.roundRect(cx + hw + 24, cy - hw + 15, 60, 32, 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + hw + 54, cy - hw + 15); ctx.lineTo(cx + hw + 54, cy - hw + 47); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + hw + 54, cy - hw + 31, 6, 0, Math.PI*2); ctx.stroke();
+
+  // Far-Right Block: Swimming Pool
+  ctx.fillStyle='#f4f6f7'; ctx.beginPath(); ctx.roundRect(cx + hw + 108, cy - hw + 8, 46, 46, 5); ctx.fill();
+  ctx.fillStyle='#33aaff'; ctx.beginPath(); ctx.roundRect(cx + hw + 112, cy - hw + 12, 38, 38, 3); ctx.fill();
+  ctx.strokeStyle='#ffffff40'; ctx.lineWidth=0.6;
+  for(let x=cx+hw+120; x<cx+hw+145; x+=8) {
+    ctx.beginPath(); ctx.moveTo(x, cy-hw+12); ctx.lineTo(x, cy-hw+50); ctx.stroke();
+  }
+
+  // 3. Draw Main Active Intersecting Roads (dark road grey)
+  ctx.fillStyle='#2c3e50';
+  ctx.fillRect(0, cy-hw, W, hw*2);
+  ctx.fillRect(cx-hw, 0, hw*2, H);
+  ctx.fillStyle='#34495e';
+  ctx.fillRect(cx-hw, cy-hw, hw*2, hw*2);
+
+  // Road surface grain noise
+  ctx.save(); ctx.globalAlpha=0.024;
+  for(let i=0; i<60; i++){ ctx.fillStyle='#fff'; ctx.fillRect(Math.random()*W, Math.random()*H, Math.random()*3+1, 1); }
   ctx.restore();
-  // kerb lines
-  ctx.strokeStyle='#ffffff15';ctx.lineWidth=1.8;
+
+  // Main Kerb lines
+  ctx.strokeStyle='#ffffff35'; ctx.lineWidth=1.8;
   [[0,cy-hw,cx-hw,cy-hw],[cx+hw,cy-hw,W,cy-hw],[0,cy+hw,cx-hw,cy+hw],[cx+hw,cy+hw,W,cy+hw],
    [cx-hw,0,cx-hw,cy-hw],[cx-hw,cy+hw,cx-hw,H],[cx+hw,0,cx+hw,cy-hw],[cx+hw,cy+hw,cx+hw,H]]
-  .forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
-  // centre dashes
-  ctx.setLineDash([18,12]);ctx.strokeStyle='#ffff0030';ctx.lineWidth=1.8;
+  .forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
+
+  // Main Centre dashes
+  ctx.setLineDash([18,12]); ctx.strokeStyle='#ffff0038'; ctx.lineWidth=1.8;
   [[0,cy,cx-hw,cy],[cx+hw,cy,W,cy],[cx,0,cx,cy-hw],[cx,cy+hw,cx,H]]
-  .forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+  .forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
   ctx.setLineDash([]);
   // lane dividers
   ctx.setLineDash([10,8]);ctx.strokeStyle='#ffffff12';ctx.lineWidth=1;
@@ -1377,6 +1456,9 @@ function startAITraining() {
   
   if (trainMode === 'traffic') {
     addLog('⚙️ RETRAINING AI MODEL on 8 classes across multiple angles...', 'warning');
+    addLog('📂 Loading ambulance dataset from local cache...', 'info');
+    addLog('🔍 Found 1,034 ambulance images and 1,245 background images.', 'info');
+    addLog('⏳ Initializing neural network transfer learning...', 'info');
   } else {
     addLog('⚙️ RETRAINING DOCUMENT LAYOUT AI MODEL on 7 structural elements...', 'warning');
   }
