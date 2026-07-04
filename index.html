@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Ambulance Priority Traffic Management System</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">🚑</span>
+        <div class="logo-text">
+          <span class="logo-title">APTMS</span>
+          <span class="logo-sub">AI Ambulance Priority Traffic Management System</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="phase-indicator" id="phaseIndicator">
+        <div class="phase-dot" id="phaseDot"></div>
+        <span id="phaseLabel">Normal Operation</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-stat">
+        <span class="stat-val" id="uptime">99.8%</span>
+        <span class="stat-lbl">Uptime</span>
+      </div>
+      <div class="header-stat">
+        <span class="stat-val" id="responseTime">—</span>
+        <span class="stat-lbl">Response (ms)</span>
+      </div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Left Panel: AI Sensors -->
+    <aside class="panel panel-left">
+      <h3 class="panel-title"><span class="panel-icon">🤖</span> AI Detection Layer</h3>
+
+      <div class="sensor-card" id="sensorCamera">
+        <div class="sensor-header">
+          <span class="sensor-icon">📷</span>
+          <span class="sensor-name">AI Camera (YOLO v8)</span>
+          <span class="sensor-status idle" id="camStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="camBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="camConf">Confidence: 0%</span>
+      </div>
+
+      <div class="sensor-card" id="sensorRFID">
+        <div class="sensor-header">
+          <span class="sensor-icon">📡</span>
+          <span class="sensor-name">RFID Reader (UHF)</span>
+          <span class="sensor-status idle" id="rfidStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="rfidBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="rfidConf">Confidence: 0%</span>
+      </div>
+
+      <div class="sensor-card" id="sensorGPS">
+        <div class="sensor-header">
+          <span class="sensor-icon">🛰️</span>
+          <span class="sensor-name">GPS Tracker</span>
+          <span class="sensor-status idle" id="gpsStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="gpsBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="gpsConf">Confidence: 0%</span>
+      </div>
+
+      <div class="sensor-card" id="sensorSound">
+        <div class="sensor-header">
+          <span class="sensor-icon">🔊</span>
+          <span class="sensor-name">Siren Detector (CNN)</span>
+          <span class="sensor-status idle" id="soundStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="soundBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="soundConf">Confidence: 0%</span>
+      </div>
+
+      <div class="fusion-box" id="fusionBox">
+        <div class="fusion-title">🧠 Sensor Fusion Score</div>
+        <div class="fusion-ring-wrap">
+          <svg class="fusion-ring" viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52" />
+            <circle class="ring-fill" id="fusionRing" cx="60" cy="60" r="52"
+              stroke-dasharray="327" stroke-dashoffset="327" />
+          </svg>
+          <div class="fusion-score" id="fusionScore">0%</div>
+        </div>
+        <div class="fusion-verdict" id="fusionVerdict">Monitoring...</div>
+      </div>
+
+      <!-- AI Training monitor -->
+      <div class="sensor-card" id="aiTrainingCard" style="margin-top: 10px;">
+        <div class="sensor-header" style="justify-content: space-between; display: flex;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">🧠</span>
+            <span class="sensor-name">AI Training Monitor</span>
+          </div>
+          <span class="sensor-status locked" id="trainStatus" style="background: #00ff8820; color: #00ff88; border-color: #00ff8840;">MONITOR</span>
+        </div>
+        <div style="text-align: center; margin: 8px 0; background: #060e18; border-radius: 6px; padding: 4px; border: 1px solid #1a3a5c; position: relative; overflow: hidden; height: 94px; display: flex; align-items: center; justify-content: center;">
+          <canvas id="trainingCanvas" width="220" height="84" style="background: #040810; border-radius: 4px;"></canvas>
+        </div>
+        <div class="sensor-bar-wrap" style="height: 6px; background: #1a3a5c30;">
+          <div class="sensor-bar" id="trainBar" style="width:100%; background: var(--accent);"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text2); margin-top: 5px;">
+          <span id="trainEpoch">Epoch: 150/150</span>
+          <span id="trainClass">Class: Ambulance</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text3); margin-top: 2px;">
+          <span id="trainLoss">Loss: 0.009</span>
+          <span id="trainAngles">Angles: 0°, 90°, 180°, 270°</span>
+        </div>
+        <button class="btn btn-secondary" id="btnRetrain" onclick="startAITraining()" style="width: 100%; height: 26px; padding: 0; font-size: 10px; margin-top: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #1a3a5c30; font-family: var(--font-head); letter-spacing: 0.5px;">
+          <span>⚙️</span> Retrain Multi-Angle AI
+        </button>
+      </div>
+
+      <div class="event-log" id="eventLog">
+        <div class="log-title">📋 Event Log</div>
+        <div class="log-entries" id="logEntries">
+          <div class="log-entry info">System initialized. Monitoring active.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Intersection Canvas -->
+    <section class="intersection-wrap">
+      <canvas id="intersectionCanvas"></canvas>
+      <div class="canvas-overlay" id="detectionOverlay" style="display:none">
+        <div class="detection-badge">
+          <span class="badge-icon">⚡</span>
+          <span class="badge-text">AMBULANCE DETECTED</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Signal Control & Stats -->
+    <aside class="panel panel-right">
+      <h3 class="panel-title"><span class="panel-icon">🚦</span> Signal Control</h3>
+
+      <div class="signals-grid">
+        <div class="signal-card" id="sigNorth">
+          <div class="signal-dir">⬆ NORTH</div>
+          <div class="traffic-light">
+            <div class="light red" id="nRed"></div>
+            <div class="light yellow" id="nYellow"></div>
+            <div class="light green active" id="nGreen"></div>
+          </div>
+          <div class="signal-timer" id="nTimer">18s</div>
+          <div class="signal-state" id="nState">GREEN</div>
+        </div>
+
+        <div class="signal-card" id="sigEast">
+          <div class="signal-dir">➡ EAST</div>
+          <div class="traffic-light">
+            <div class="light red" id="eRed"></div>
+            <div class="light yellow active" id="eYellow"></div>
+            <div class="light green" id="eGreen"></div>
+          </div>
+          <div class="signal-timer" id="eTimer">5s</div>
+          <div class="signal-state" id="eState">YELLOW</div>
+        </div>
+
+        <div class="signal-card" id="sigSouth">
+          <div class="signal-dir">⬇ SOUTH</div>
+          <div class="traffic-light">
+            <div class="light red active" id="sRed"></div>
+            <div class="light yellow" id="sYellow"></div>
+            <div class="light green" id="sGreen"></div>
+          </div>
+          <div class="signal-timer" id="sTimer">22s</div>
+          <div class="signal-state" id="sState">RED</div>
+        </div>
+
+        <div class="signal-card" id="sigWest">
+          <div class="signal-dir">⬅ WEST</div>
+          <div class="traffic-light">
+            <div class="light red active" id="wRed"></div>
+            <div class="light yellow" id="wYellow"></div>
+            <div class="light green" id="wGreen"></div>
+          </div>
+          <div class="signal-timer" id="wTimer">30s</div>
+          <div class="signal-state" id="wState">RED</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Stats -->
+      <h3 class="panel-title"><span class="panel-icon">📊</span> Live Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-icon">🚑</div>
+          <div class="stat-num" id="statAmbulances">0</div>
+          <div class="stat-desc">Ambulances Cleared</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">⏱️</div>
+          <div class="stat-num" id="statAvgTime">—</div>
+          <div class="stat-desc">Avg Response (ms)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">🚗</div>
+          <div class="stat-num" id="statCars">12</div>
+          <div class="stat-desc">Vehicles Waiting</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">✅</div>
+          <div class="stat-num" id="statAccuracy">98.7%</div>
+          <div class="stat-desc">Detection Accuracy</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Control Buttons -->
+      <h3 class="panel-title"><span class="panel-icon">🎮</span> Simulation Control</h3>
+      <div class="controls">
+        <button class="btn btn-primary" id="btnAmbulance" onclick="triggerAmbulance()">
+          <span>🚑</span> Deploy Ambulance
+        </button>
+        <button class="btn btn-secondary" id="btnReset" onclick="resetSimulation()">
+          <span>🔄</span> Reset System
+        </button>
+        <button class="btn btn-toggle" id="btnAuto" onclick="toggleAuto()">
+          <span>⚙️</span> Auto Mode: OFF
+        </button>
+      </div>
+
+      <div class="speed-control">
+        <label>Simulation Speed</label>
+        <input type="range" id="speedRange" min="0.5" max="3" step="0.5" value="1" oninput="updateSpeed(this.value)"/>
+        <span id="speedLabel">1×</span>
+      </div>
+
+      <!-- Phase Timeline -->
+      <div class="phase-timeline">
+        <div class="timeline-item active" id="tl1">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Normal Operation</div>
+            <div class="tl-desc">Standard signal cycle</div>
+          </div>
+        </div>
+        <div class="timeline-item" id="tl2">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Ambulance Detected</div>
+            <div class="tl-desc">AI sensors activated</div>
+          </div>
+        </div>
+        <div class="timeline-item" id="tl3">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Priority GREEN</div>
+            <div class="tl-desc">All roads RED → ambulance GREEN</div>
+          </div>
+        </div>
+        <div class="timeline-item" id="tl4">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Resume Normal</div>
+            <div class="tl-desc">System resets signal cycle</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="images.js"></script>
+  <script src="simulation.js"></script>
+</body>
+</html>

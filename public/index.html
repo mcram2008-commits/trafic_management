@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Business Automation Simulator</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Remix Icons CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo"><i class="ri-whatsapp-fill"></i></div>
+        <div class="brand-name">WA Automate</div>
+      </div>
+      
+      <nav style="flex-grow: 1;">
+        <ul class="nav-links">
+          <li>
+            <div class="nav-item active" data-view="dashboard">
+              <i class="ri-dashboard-3-line nav-icon"></i> Performance Dashboard
+            </div>
+          </li>
+          <li>
+            <div class="nav-item" data-view="simulator">
+              <i class="ri-phone-find-line nav-icon"></i> WhatsApp Sandbox
+            </div>
+          </li>
+          <li>
+            <div class="nav-item" data-view="crm">
+              <i class="ri-contacts-book-line nav-icon"></i> CRM & Takeover
+            </div>
+          </li>
+          <li>
+            <div class="nav-item" data-view="appointments">
+              <i class="ri-calendar-todo-line nav-icon"></i> Appointments
+            </div>
+          </li>
+          <li>
+            <div class="nav-item" data-view="campaigns">
+              <i class="ri-megaphone-line nav-icon"></i> Outbound Campaigns
+            </div>
+          </li>
+          <li>
+            <div class="nav-item" data-view="db-viewer">
+              <i class="ri-database-2-line nav-icon"></i> Database Viewer
+            </div>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="system-status">
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>API Webhook Status: Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Header Bar -->
+      <header class="header-bar">
+        <div class="header-title">
+          <h1>System Performance Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="switchView('simulator')">
+            <i class="ri-play-circle-line"></i> Launch Sandbox
+          </button>
+        </div>
+      </header>
+
+      <!-- View 1: Dashboard -->
+      <div id="dashboard-view" class="view-panel active">
+        <!-- Stat Cards Grid -->
+        <div class="metrics-grid">
+          <div class="card">
+            <div class="card-header">
+              <span>Total Conversations</span>
+              <i class="ri-chat-3-line card-icon"></i>
+            </div>
+            <div id="stat-total-chats" class="card-value">12</div>
+            <div class="card-trend trend-up">
+              <i class="ri-arrow-right-up-line"></i> +14.2% this week
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span>Active Orders tracked</span>
+              <i class="ri-shopping-bag-3-line card-icon orange"></i>
+            </div>
+            <div id="stat-active-orders" class="card-value">2</div>
+            <div class="card-trend trend-up">
+              <i class="ri-arrow-right-up-line"></i> Real-time SQL tracking
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span>Appointments Booked</span>
+              <i class="ri-calendar-check-line card-icon wa"></i>
+            </div>
+            <div id="stat-booked-appts" class="card-value">1</div>
+            <div class="card-trend trend-up">
+              <i class="ri-check-line"></i> Active SQLite sync
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span>AI Resolution Rate</span>
+              <i class="ri-cpu-line card-icon red"></i>
+            </div>
+            <div id="stat-resolution-rate" class="card-value">80%</div>
+            <div class="card-trend trend-up">
+              <i class="ri-arrow-right-up-line"></i> Handled by AI chatbot
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Layout Split -->
+        <div class="dashboard-layout">
+          <!-- Live chart panel -->
+          <div class="card" style="display: flex; flex-direction: column;">
+            <div class="section-title">
+              <i class="ri-bar-chart-2-line"></i> Message Traffic by Source Engine
+            </div>
+            <div id="dashboard-chart" class="chart-container">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Live activity log panel -->
+          <div class="card" style="display: flex; flex-direction: column;">
+            <div class="section-title">
+              <i class="ri-history-line"></i> Live SQL & API Activity feed
+            </div>
+            <div id="activity-list" class="activity-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 2: Simulator (WhatsApp Phone & Flowchart) -->
+      <div id="simulator-view" class="view-panel">
+        <div class="simulator-view-grid">
+          <!-- WhatsApp Phone Mockup -->
+          <div class="phone-mockup">
+            <div class="phone-notch"></div>
+            
+            <div class="phone-header">
+              <div class="phone-avatar bot"><i class="ri-customer-service-2-line"></i></div>
+              <div class="phone-header-info">
+                <span id="phone-contact-name" class="phone-title">Automation System</span>
+                <span class="phone-subtitle"><span class="status-dot" style="width:6px; height:6px;"></span>Online</span>
+              </div>
+            </div>
+
+            <!-- Messages area -->
+            <div id="phone-chat-area" class="phone-chat-area">
+              <!-- Rendered via JS -->
+              
+              <!-- Typing Indicator -->
+              <div id="phone-typing" class="message-typing">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+              </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="phone-input-bar">
+              <input type="text" id="phone-input" class="phone-input" placeholder="Type a WhatsApp message..." autocomplete="off">
+              <button id="phone-send-btn" class="phone-send-btn">
+                <i class="ri-send-plane-2-fill"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Flowchart Visualizer -->
+          <div class="pipeline-visualizer">
+            <div class="visualizer-card">
+              <div class="section-title" style="margin-bottom: 0px;">
+                <i class="ri-node-tree"></i> Pipeline Dataflow Execution Tracker
+              </div>
+              
+              <div class="diagram-container">
+                <!-- SVG Connector Canvas overlay -->
+                <svg class="diagram-svg-canvas">
+                  <path id="path-start-wa" class="connector-path" d="M 400 35 L 400 59" />
+                  <path id="path-wa-webhook" class="connector-path" d="M 400 95 L 400 114" />
+                  <path id="path-webhook-backend" class="connector-path" d="M 400 150 L 400 169" />
+                  
+                  <path id="path-backend-auto" class="connector-path" d="M 400 205 C 400 215 210 215 210 229" />
+                  <path id="path-backend-ai" class="connector-path" d="M 400 205 L 400 229" />
+                  <path id="path-backend-order" class="connector-path" d="M 400 205 C 400 215 590 215 590 229" />
+                  
+                  <path id="path-ai-db" class="connector-path" d="M 400 265 L 400 300" />
+                  <path id="path-order-db" class="connector-path" d="M 590 265 C 590 285 430 290 415 300" />
+                  <path id="path-auto-outbound" class="connector-path" d="M 210 265 C 210 285 530 280 540 307" />
+                  
+                  <path id="path-db-appt" class="connector-path" d="M 350 325 L 275 325" />
+                  <path id="path-db-outbound" class="connector-path" d="M 450 325 L 525 325" />
+                  <path id="path-appt-outbound" class="connector-path" d="M 190 343 C 190 365 590 365 610 343" />
+                  
+                  <path id="path-admin-db" class="connector-path" d="M 400 387 L 400 350" />
+                  <path id="path-outbound-phone" class="connector-path" d="M 610 343 L 670 387" />
+                </svg>
+
+                <!-- Flowchart Node Elements (Coordinates absolute mapped to centers) -->
+                <div id="start-node" class="diagram-node" style="left: 350px; top: 5px; width: 100px; height: 30px;">
+                  START
+                </div>
+                <div id="wa-api-node" class="diagram-node" style="left: 300px; top: 59px; width: 200px; height: 36px;">
+                  <i class="ri-whatsapp-line"></i> Meta API Gateway
+                </div>
+                <div id="webhook-node" class="diagram-node" style="left: 310px; top: 114px; width: 180px; height: 36px;">
+                  <i class="ri-webhook-line"></i> Webhook Receiver
+                </div>
+                <div id="backend-node" class="diagram-node" style="left: 300px; top: 169px; width: 200px; height: 36px;">
+                  <i class="ri-cpu-line"></i> Backend Processor
+                </div>
+                
+                <!-- Routing Layer -->
+                <div id="auto-reply-node" class="diagram-node" style="left: 145px; top: 229px; width: 130px; height: 36px;">
+                  <i class="ri-reply-line"></i> Auto Reply
+                </div>
+                <div id="ai-chatbot-node" class="diagram-node" style="left: 335px; top: 229px; width: 130px; height: 36px;">
+                  <i class="ri-robot-line"></i> AI Chatbot
+                </div>
+                <div id="order-status-node" class="diagram-node" style="left: 525px; top: 229px; width: 130px; height: 36px;">
+                  <i class="ri-archive-line"></i> Order Status
+                </div>
+
+                <!-- Database and Output Layer -->
+                <div id="appt-mgmt-node" class="diagram-node" style="left: 105px; top: 307px; width: 170px; height: 36px;">
+                  <i class="ri-calendar-line"></i> Appointment Engine
+                </div>
+                <div id="database-node" class="diagram-node" style="left: 350px; top: 300px; width: 100px; height: 50px;">
+                  <i class="ri-database-line"></i> DB Store
+                </div>
+                <div id="wa-outbound-node" class="diagram-node" style="left: 525px; top: 307px; width: 170px; height: 36px;">
+                  <i class="ri-whatsapp-fill"></i> Notification Service
+                </div>
+
+                <!-- Admin Dashboard control -->
+                <div id="admin-dashboard-node" class="diagram-node" style="left: 325px; top: 387px; width: 150px; height: 36px;">
+                  <i class="ri-dashboard-line"></i> Admin Dashboard
+                </div>
+                <div id="phone-node-dest" class="diagram-node" style="left: 610px; top: 387px; width: 120px; height: 36px;">
+                  <i class="ri-cellphone-line"></i> Cust Phone
+                </div>
+              </div>
+
+              <!-- Console logs -->
+              <div id="log-container" class="log-panel">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 3: CRM / Human Takeover -->
+      <div id="crm-view" class="view-panel">
+        <div class="crm-layout">
+          <!-- Customers List -->
+          <aside class="crm-sidebar">
+            <div class="search-box">
+              <i class="ri-search-line"></i>
+              <input type="text" class="search-input" placeholder="Search customer records...">
+            </div>
+            <div id="crm-customer-list" class="customer-list">
+              <!-- Rendered via JS -->
+            </div>
+          </aside>
+
+          <!-- Customer Detail Card -->
+          <div class="crm-details-panel">
+            <div class="crm-details-header">
+              <div>
+                <h2 id="crm-det-name" style="font-size: 18px; font-weight: 600;">Alex Morgan</h2>
+                <span id="crm-det-phone" style="font-size: 13px; color: var(--text-secondary);">+1 (555) 019-2834</span>
+              </div>
+              <div>
+                <span id="crm-det-status" class="status-pill status-delivered">ACTIVE</span>
+              </div>
+            </div>
+
+            <div class="crm-details-body">
+              <!-- Left side detail stats -->
+              <div class="info-group">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                  <div class="info-row">
+                    <span class="info-label">Email Address</span>
+                    <span id="crm-det-email" class="info-value">alex@example.com</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Customer Since</span>
+                    <span id="crm-det-joined" class="info-value">May 15, 2026</span>
+                  </div>
+                </div>
+
+                <div class="info-row" style="margin-top: 10px;">
+                  <span class="info-label">Purchase & Order History</span>
+                  <div id="crm-order-history" style="margin-top: 6px;">
+                    <!-- Rendered via JS -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right side live human takeover chat -->
+              <div class="crm-takeover-chat">
+                <div style="height: 50px; background: #202c33; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+                  <span style="font-size: 13px; font-weight: 600;"><i class="ri-user-voice-line"></i> Live Human Intervene Override</span>
+                  <span class="status-pill status-delivered" style="font-size: 9px; font-weight: 700;">AGENT DESK</span>
+                </div>
+                <!-- Chat history inside CRM -->
+                <div id="crm-chat-takeover-history" class="phone-chat-area" style="flex-grow: 1; overflow-y: auto;">
+                  <!-- Rendered via JS -->
+                </div>
+                <!-- Agent message input -->
+                <div class="phone-input-bar">
+                  <input type="text" id="crm-takeover-input" class="phone-input" placeholder="Type a message to take over chat..." autocomplete="off">
+                  <button id="crm-takeover-send" class="phone-send-btn" style="background: var(--accent-blue);">
+                    <i class="ri-send-plane-fill"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 4: Appointment Scheduling -->
+      <div id="appointments-view" class="view-panel">
+        <div class="card">
+          <div class="section-title">
+            <i class="ri-calendar-2-line"></i> Active Customer Bookings & Schedule Management (SQLite)
+          </div>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+            Manage and view SQLite database schedules. Clicking "Ping WhatsApp" sends an automated outbound WhatsApp message template confirming or reminding the customer of their appointment.
+          </p>
+          <div id="appointments-table-container">
+            <!-- Table rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- View 5: Outbound Campaigns -->
+      <div id="campaigns-view" class="view-panel">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <!-- Launch campaign form -->
+          <div class="card">
+            <div class="section-title">
+              <i class="ri-send-plane-line"></i> Launch WhatsApp Campaign Blast
+            </div>
+            <div class="info-group" style="margin-top: 16px;">
+              <div class="info-row">
+                <label class="info-label" for="campaign-template-select">Campaign Template Message</label>
+                <select id="campaign-template-select" class="search-input" style="padding-left:12px; margin-top:6px; background:#1e293b;">
+                  <option value="promo_summer">☀️ Summer Promo Blast (20% Coupon Code)</option>
+                  <option value="product_launch">🚀 Product Announcement (Smart Plug Lite)</option>
+                  <option value="feedback_survey">📋 Customer Experience Feedback Survey</option>
+                </select>
+              </div>
+              
+              <div class="info-row" style="margin-top: 10px;">
+                <label class="info-label" for="campaign-segment-select">Recipient Customer Segment</label>
+                <select id="campaign-segment-select" class="search-input" style="padding-left:12px; margin-top:6px; background:#1e293b;">
+                  <option value="all">All Registered Customers</option>
+                  <option value="active">Active Accounts Only</option>
+                  <option value="lead">New Leads Only</option>
+                  <option value="inactive">Inactive Accounts (Re-engagement)</option>
+                </select>
+              </div>
+
+              <div style="margin-top: 20px; display:flex; justify-content:flex-end;">
+                <button class="btn btn-success" onclick="sendCampaignBlast()">
+                  <i class="ri-plane-line"></i> Dispatch Broadcast
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campaign explanation card -->
+          <div class="card" style="display: flex; flex-direction: column; justify-content: center;">
+            <div class="section-title">
+              <i class="ri-information-line"></i> Campaign Guidelines & Policy
+            </div>
+            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 12px;">
+              <p>
+                Meta Cloud API mandates that promotional campaigns use <strong>pre-approved message templates</strong>. Dispatched broadcasts are automatically throttled to respect rate limit policies.
+              </p>
+              <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--accent-orange); padding: 12px; border-radius: 4px; color: #fbbf24;">
+                <strong>Meta Compliance:</strong> Ensure all campaign messages include an explicit "Reply STOP to Opt-Out" footer to prevent spam flags.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 6: DB Viewer -->
+      <div id="db-viewer-view" class="view-panel">
+        <div class="db-layout">
+          <!-- Database Sub-tabs -->
+          <div class="db-tabs">
+            <button class="db-tab active" data-tab="customers"><i class="ri-user-line"></i> customers</button>
+            <button class="db-tab" data-tab="orders"><i class="ri-shopping-cart-line"></i> orders</button>
+            <button class="db-tab" data-tab="appointments"><i class="ri-calendar-line"></i> appointments</button>
+            <button class="db-tab" data-tab="products"><i class="ri-shopping-bag-line"></i> products</button>
+            <button class="db-tab" data-tab="messages"><i class="ri-message-line"></i> messages</button>
+          </div>
+
+          <!-- DB Contents table wrapper -->
+          <div class="card" style="overflow-x: auto; padding: 16px;">
+            <div id="db-table-contents">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Core JavaScript script -->
+  <script src="app.js"></script>
+</body>
+</html>
