@@ -30,9 +30,9 @@ let totalAmb=0,responseTimes=[],detectionStart=0;
 let detectionProgress=0,ambPhaseTimer=0;
 const signals={
   north:{state:'green', timer:30},
-  east: {state:'yellow',timer:5 },
-  south:{state:'red',   timer:30},
-  west: {state:'red',   timer:30},
+  east: {state:'red',   timer:60},
+  south:{state:'red',   timer:90},
+  west: {state:'red',   timer:120},
 };
 const CYCLE=[['north',30],['east',30],['south',30],['west',30]];
 let cycleIdx=0,cycleT=0,yellowPending=false;
@@ -119,7 +119,7 @@ class Vehicle{
     const ahead=all.filter(v=>v.id!==this.id&&v.dir===this.dir&&v.pos>this.pos).sort((a,b)=>a.pos-b.pos)[0];
     // Realistic traffic stopping behavior: only stop if before the stop line, or if already slowing/stopped near it.
     // Vehicles that have already entered the intersection will clear it smoothly.
-    const mustStop=(sig==='red'||sig==='yellow')&&!(phase==='priority'&&this.dir===AMB.dir) && (this.pos < stopLine || (this.pos < stopLine + 20 && this.spd < 5));
+    const mustStop=(sig==='red')&&!(phase==='priority'&&this.dir===AMB.dir) && (this.pos < stopLine || (this.pos < stopLine + 20 && this.spd < 5));
     let desired=this.spec.maxSpd;
     if(mustStop&&dist>0){const bd=(this.spd*this.spd)/(2*this.spec.dec);if(dist<=bd+18)desired=0;}
     if(mustStop&&this.pos>=stopLine){this.pos=stopLine;desired=0;}
@@ -996,25 +996,49 @@ logicLoop();
 function tickCycle(dt){
   if(phase!=='normal')return;
   cycleT+=dt;
-  const cur=CYCLE[cycleIdx],rem=cur[1]-cycleT;
-  // Activate yellow only for the current green direction and only once per cycle
-  if(!yellowPending && rem<=5){
-    signals[cur[0]].state='yellow';
-    yellowPending=true;
-    updateSigUI();
+  const cur=CYCLE[cycleIdx];
+  const greenDuration=cur[1];
+  const yellowDuration=3;
+  const nextDir=CYCLE[(cycleIdx+1)%CYCLE.length][0];
+  
+  if(cycleT < greenDuration){
+    // Normal green phase
+    signals[cur[0]].state='green';
+    signals[cur[0]].timer=Math.max(0,Math.ceil(greenDuration - cycleT));
+    DIRS.forEach(d=>{
+      if(d!==cur[0]){
+        signals[d].state='red';
+        signals[d].timer=Math.max(0,Math.ceil(greenDuration - cycleT + yellowDuration));
+      }
+    });
+    if(yellowPending){yellowPending=false;updateSigUI();}
   }
-  if(rem<=0){
-    // Transition: turn all signals red before setting next green
-    DIRS.forEach(d => signals[d].state='red');
+  else if(cycleT < greenDuration + yellowDuration){
+    // Yellow preparation phase (previous green turns red, next green turns yellow)
+    signals[cur[0]].state='red';
+    signals[cur[0]].timer=Math.max(0,Math.ceil(greenDuration + yellowDuration - cycleT));
+    signals[nextDir].state='yellow';
+    signals[nextDir].timer=Math.max(0,Math.ceil(greenDuration + yellowDuration - cycleT));
+    DIRS.forEach(d=>{
+      if(d!==cur[0] && d!==nextDir){
+        signals[d].state='red';
+        signals[d].timer=Math.max(0,Math.ceil(greenDuration + yellowDuration - cycleT));
+      }
+    });
+    if(!yellowPending){yellowPending=true;updateSigUI();}
+  }
+  else {
+    // Transition to next road green
+    signals[cur[0]].state='red';
     cycleIdx=(cycleIdx+1)%CYCLE.length;
     const nd=CYCLE[cycleIdx][0];
     signals[nd].state='green';
     cycleT=0;
     yellowPending=false;
-    DIRS.forEach(d=>{if(d!==nd&&signals[d].state!=='yellow')signals[d].state='red';});
-    updateSigUI();addLog(`🚦 ${nd.toUpperCase()} → GREEN (30s)`,'info');
+    DIRS.forEach(d=>{if(d!==nd)signals[d].state='red';});
+    updateSigUI();
+    addLog(`🚦 ${nd.toUpperCase()} → GREEN (${CYCLE[cycleIdx][1]}s)`,'info');
   }
-  DIRS.forEach(dir=>{signals[dir].timer=Math.max(0,Math.ceil(signals[dir].state==='red'?rem+CYCLE[cycleIdx][1]:rem));});
 }
 
 /* ── Ambulance ───────────────────────────────────────────── */
@@ -1099,7 +1123,7 @@ function resumeNormal(){
 function resetSimulation(){
   phase='normal';AMB.active=false;AMB.pos=0;AMB.spd=0;
   detectionProgress=0;ambPhaseTimer=0;cycleIdx=0;cycleT=0;yellowPending=false;
-  Object.assign(signals,{north:{state:'green',timer:30},east:{state:'yellow',timer:5},south:{state:'red',timer:30},west:{state:'red',timer:30}});
+  Object.assign(signals,{north:{state:'green',timer:30},east:{state:'red',timer:60},south:{state:'red',timer:90},west:{state:'red',timer:120}});
   updateSigUI();setPhaseUI('normal');updateTimelineUI(0);resetSensorUI();
   document.getElementById('detectionOverlay').style.display='none';
   document.getElementById('btnAmbulance').disabled=false;
@@ -1706,6 +1730,9 @@ function runGAOptimizer() {
       // Re-initialize cycle state
       cycleT = 0;
       yellowPending = false;
+      DIRS.forEach(d => {
+        signals[d].state = d === CYCLE[cycleIdx][0] ? 'green' : 'red';
+      });
       
       // Log results
       addLog(`📊 Webster's Delay Fitness computed. Optimal cycle solved in 164ms!`, 'success');
