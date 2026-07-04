@@ -673,145 +673,176 @@ function drawRoad(){
   const cx=canvas.width/2,cy=canvas.height/2,W=canvas.width,H=canvas.height;
   const hw=Math.min(W,H)*0.09;
   
-  // 1. Grass background (Bright Pygame green)
-  ctx.fillStyle='#a1cc1a';
+  // 1. Sidewalk Base (Light grey sidewalk pavement color from mod_int.png)
+  ctx.fillStyle='#d5dbdb';
   ctx.fillRect(0,0,W,H);
 
-  // Helper for drawing Pygame-style houses
-  const drawHouse = (x, y) => {
-    ctx.fillStyle='#eaeaea'; ctx.fillRect(x-12, y-6, 24, 15);
-    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=0.5; ctx.strokeRect(x-12, y-6, 24, 15);
-    ctx.fillStyle='#d33'; ctx.beginPath();
-    ctx.moveTo(x-15, y-6); ctx.lineTo(x, y-16); ctx.lineTo(x+15, y-6);
+  // 2. Rounded Grass Corner Blocks
+  const rGrass = 22; // corner radius of the grass
+  const padding = 16; // offset from road kerb to grass edge
+  
+  ctx.fillStyle='#3b7a15'; // Lush green color of the grass blocks
+  // Top-Left block
+  ctx.beginPath();
+  ctx.roundRect(-20, -20, cx - hw - padding + 20, cy - hw - padding + 20, [0, 0, rGrass, 0]);
+  ctx.fill();
+  
+  // Top-Right block
+  ctx.beginPath();
+  ctx.roundRect(cx + hw + padding, -20, W - (cx + hw + padding) + 20, cy - hw - padding + 20, [0, 0, 0, rGrass]);
+  ctx.fill();
+  
+  // Bottom-Left block
+  ctx.beginPath();
+  ctx.roundRect(-20, cy + hw + padding, cx - hw - padding + 20, H - (cy + hw + padding) + 20, [0, rGrass, 0, 0]);
+  ctx.fill();
+  
+  // Bottom-Right block
+  ctx.beginPath();
+  ctx.roundRect(cx + hw + padding, cy + hw + padding, W - (cx + hw + padding) + 20, H - (cy + hw + padding) + 20, [rGrass, 0, 0, 0]);
+  ctx.fill();
+
+  // Helper for drawing 3D tree clusters
+  const drawTree = (x, y) => {
+    ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 8;
+    ctx.fillStyle = '#1e3f14'; ctx.beginPath(); ctx.arc(x-7, y+4, 13, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#2c5e1c'; ctx.beginPath(); ctx.arc(x+7, y-4, 15, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3f7c2a'; ctx.beginPath(); ctx.arc(x, y+6, 14, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#5c9e3e'; ctx.beginPath(); ctx.arc(x+2, y+1, 6, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+  };
+
+  // Helper for drawing houses with specific roof colors
+  const drawHouse = (x, y, w, h, roofCol, bodyCol) => {
+    ctx.fillStyle=bodyCol; ctx.fillRect(x-w/2, y-h/2, w, h);
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.5; ctx.strokeRect(x-w/2, y-h/2, w, h);
+    ctx.fillStyle=roofCol; ctx.beginPath();
+    ctx.moveTo(x-w/2-3, y-h/2); ctx.lineTo(x, y-h/2-10); ctx.lineTo(x+w/2+3, y-h/2);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#531'; ctx.fillRect(x-3, y+3, 6, 6); // door
   };
 
-  // Helper for drawing commercial blocks
-  const drawBuilding = (x, y, w, h) => {
-    ctx.fillStyle='#f0f3f4'; ctx.fillRect(x-w/2, y-h/2, w, h);
-    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=0.8; ctx.strokeRect(x-w/2, y-h/2, w, h);
-    ctx.fillStyle='#e74c3c'; ctx.fillRect(x-w/2, y-h/2, w, 5); // roof trim
+  // Helper for drawing office buildings (grey flat roof with details)
+  const drawOffice = (x, y, w, h) => {
+    ctx.fillStyle='#95a5a6'; ctx.fillRect(x-w/2, y-h/2, w, h);
+    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=1; ctx.strokeRect(x-w/2, y-h/2, w, h);
+    // Flat roof trim
+    ctx.fillStyle='#7f8c8d'; ctx.fillRect(x-w/2+2, y-h/2+2, w-4, 2);
+    // Roof air vents
+    ctx.fillStyle='#34495e';
+    ctx.fillRect(x-w/4, y-2, 6, 6);
+    ctx.fillRect(x+w/8, y-4, 8, 8);
+    ctx.fillStyle='#bdc3c7';
+    ctx.beginPath(); ctx.arc(x-w/4+3, y+1, 2, 0, Math.PI*2); ctx.fill();
   };
 
-  // 2. Draw Environmental Details (Prit2341 Pygame map blocks)
-  // Top-Left corner: Houses
-  drawHouse(cx - hw - 85, cy - hw - 42);
-  drawHouse(cx - hw - 45, cy - hw - 65);
-  drawHouse(cx - hw - 125, cy - hw - 52);
+  // Helper for drawing pedestrians on sidewalks
+  const drawPedestrian = (x, y, shirtCol) => {
+    ctx.fillStyle=shirtCol;
+    ctx.beginPath(); ctx.ellipse(x, y, 4, 1.8, 0.4, 0, Math.PI*2); ctx.fill(); // shoulders
+    ctx.fillStyle='#e0ac69';
+    ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI*2); ctx.fill(); // head
+    ctx.fillStyle='#331a00';
+    ctx.beginPath(); ctx.arc(x-0.5, y-0.5, 1.6, Math.PI*0.8, Math.PI*1.8); ctx.fill(); // hair
+  };
 
-  // Top-Right corner: Houses & Building
-  drawHouse(cx + hw + 45, cy - hw - 42);
-  drawHouse(cx + hw + 105, cy - hw - 65);
-  drawBuilding(cx + hw + 75, cy - hw - 18, 48, 22);
+  // 3. Populate Environmental Assets (from mod_int.png)
+  // Top-Left corner: Orange houses & Trees
+  drawHouse(35, 45, 34, 24, '#d35400', '#f39c12');
+  drawHouse(85, 35, 42, 28, '#e67e22', '#f1c40f');
+  drawTree(45, 95);
+  drawTree(85, 90);
 
-  // Bottom-Left corner: Building & House
-  drawBuilding(cx - hw - 75, cy + hw + 55, 52, 24);
-  drawHouse(cx - hw - 125, cy + hw + 50);
+  // Top-Right corner: Blue/Grey houses & Trees
+  drawHouse(cx + hw + 105, 35, 40, 26, '#2980b9', '#3498db');
+  drawHouse(W - 45, 80, 44, 28, '#c0392b', '#e74c3c');
+  drawTree(cx + hw + 60, 95);
+  drawTree(W - 85, 100);
 
-  // Bottom-Right corner: Houses
-  drawHouse(cx + hw + 45, cy + hw + 48);
-  drawHouse(cx + hw + 105, cy + hw + 48);
-  drawBuilding(cx + hw + 75, cy + hw + 18, 48, 22);
+  // Bottom-Left corner: Large Office & Trees
+  drawOffice(50, H - 75, 68, 56);
+  drawTree(115, H - 65);
+  drawTree(110, H - 95);
 
-  // Middle-Left Block: Parking Lot
-  ctx.fillStyle='#34495e'; ctx.beginPath(); ctx.roundRect(cx - hw - 100, cy - hw + 8, 80, 48, 4); ctx.fill();
-  ctx.strokeStyle='#2c3e50'; ctx.lineWidth=1.2; ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=0.8;
-  for(let x=cx-hw-90; x<cx-hw-30; x+=12) {
-    ctx.beginPath(); ctx.moveTo(x, cy-hw+12); ctx.lineTo(x, cy-hw+24); ctx.stroke();
-  }
-  const carCols = ['#cc3333','#ffd700','#22aa55','#3355cc'];
-  for(let i=0; i<4; i++) {
-    if(i !== 1) {
-      ctx.fillStyle = carCols[i];
-      ctx.fillRect(cx-hw-88+i*12, cy-hw+14, 8, 10);
-    }
-  }
+  // Bottom-Right corner: Office Blocks & Trees
+  drawOffice(cx + hw + 105, H - 55, 78, 52);
+  drawTree(cx + hw + 50, H - 65);
 
-  // Middle-Right Block: Soccer Football Pitch Stadium
-  ctx.fillStyle='#1e3f20'; ctx.strokeStyle='#ffffff60'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.roundRect(cx + hw + 15, cy - hw + 10, 78, 42, 20); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#2e7d32'; ctx.beginPath(); ctx.roundRect(cx + hw + 24, cy - hw + 15, 60, 32, 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + hw + 54, cy - hw + 15); ctx.lineTo(cx + hw + 54, cy - hw + 47); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx + hw + 54, cy - hw + 31, 6, 0, Math.PI*2); ctx.stroke();
+  // Draw Sidewalk Pedestrians
+  drawPedestrian(cx - hw - 8, cy - hw - 30, '#1abc9c');
+  drawPedestrian(cx - hw - 35, cy - hw - 8, '#9b59b6');
+  drawPedestrian(cx + hw + 8, cy - hw - 40, '#e67e22');
+  drawPedestrian(cx + hw + 30, cy - hw - 10, '#34495e');
+  drawPedestrian(cx - hw - 40, cy + hw + 12, '#2ecc71');
+  drawPedestrian(cx - hw - 10, cy + hw + 35, '#c0392b');
+  drawPedestrian(cx + hw + 8, cy + hw + 25, '#9b59b6');
+  drawPedestrian(cx + hw + 35, cy + hw + 8, '#1abc9c');
 
-  // Far-Right Block: Swimming Pool
-  ctx.fillStyle='#f4f6f7'; ctx.beginPath(); ctx.roundRect(cx + hw + 108, cy - hw + 8, 46, 46, 5); ctx.fill();
-  ctx.fillStyle='#33aaff'; ctx.beginPath(); ctx.roundRect(cx + hw + 112, cy - hw + 12, 38, 38, 3); ctx.fill();
-  ctx.strokeStyle='#ffffff40'; ctx.lineWidth=0.6;
-  for(let x=cx+hw+120; x<cx+hw+145; x+=8) {
-    ctx.beginPath(); ctx.moveTo(x, cy-hw+12); ctx.lineTo(x, cy-hw+50); ctx.stroke();
-  }
-
-  // 3. Draw Main Active Intersecting Roads (dark road grey)
-  ctx.fillStyle='#3e3e3e';
+  // 4. Draw Main Active Intersecting Roads (Dark grey asphalt from mod_int.png)
+  ctx.fillStyle='#34495e'; // Unified asphalt road color
   ctx.fillRect(0, cy-hw, W, hw*2);
   ctx.fillRect(cx-hw, 0, hw*2, H);
 
-  // Road surface grain noise
-  ctx.save(); ctx.globalAlpha=0.024;
-  for(let i=0; i<60; i++){ ctx.fillStyle='#fff'; ctx.fillRect(Math.random()*W, Math.random()*H, Math.random()*3+1, 1); }
-  ctx.restore();
-
-  // Draw zebra crossings (crosswalks) at each intersection boundary (Prit2341 style)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
-  // North approach crosswalk
-  for(let x = cx - hw + 4; x < cx + hw; x += 11) {
-    ctx.fillRect(x, cy - hw - 20, 6, 15);
-  }
-  // South approach crosswalk
-  for(let x = cx - hw + 4; x < cx + hw; x += 11) {
-    ctx.fillRect(x, cy + hw + 5, 6, 15);
-  }
-  // West approach crosswalk
-  for(let y = cy - hw + 4; y < cy + hw; y += 11) {
-    ctx.fillRect(cx - hw - 20, y, 15, 6);
-  }
-  // East approach crosswalk
-  for(let y = cy - hw + 4; y < cy + hw; y += 11) {
-    ctx.fillRect(cx + hw + 5, y, 15, 6);
-  }
-
-  // Main Kerb lines
-  ctx.strokeStyle='#ffffff35'; ctx.lineWidth=1.8;
+  // Main Kerb lines (Thin black boundary lines where road meets sidewalk)
+  ctx.strokeStyle='#2c3e50'; ctx.lineWidth=1.5;
   [[0,cy-hw,cx-hw,cy-hw],[cx+hw,cy-hw,W,cy-hw],[0,cy+hw,cx-hw,cy+hw],[cx+hw,cy+hw,W,cy+hw],
    [cx-hw,0,cx-hw,cy-hw],[cx-hw,cy+hw,cx-hw,H],[cx+hw,0,cx+hw,cy-hw],[cx+hw,cy+hw,cx+hw,H]]
   .forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
 
-  // Main Centre dashes
-  ctx.setLineDash([18,12]); ctx.strokeStyle='#ffff0038'; ctx.lineWidth=1.8;
-  [[0,cy,cx-hw,cy],[cx+hw,cy,W,cy],[cx,0,cx,cy-hw],[cx,cy+hw,cx,H]]
-  .forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
+  // 5. Draw Double Solid Yellow Centre Lines (from mod_int.png)
+  ctx.strokeStyle='#f1c40f'; ctx.lineWidth=1.2;
+  ctx.beginPath();
+  // North centre double line
+  ctx.moveTo(cx - 1.5, 0); ctx.lineTo(cx - 1.5, cy - hw);
+  ctx.moveTo(cx + 1.5, 0); ctx.lineTo(cx + 1.5, cy - hw);
+  // South centre double line
+  ctx.moveTo(cx - 1.5, cy + hw); ctx.lineTo(cx - 1.5, H);
+  ctx.moveTo(cx + 1.5, cy + hw); ctx.lineTo(cx + 1.5, H);
+  // West centre double line
+  ctx.moveTo(0, cy - 1.5); ctx.lineTo(cx - hw, cy - 1.5);
+  ctx.moveTo(0, cy + 1.5); ctx.lineTo(cx - hw, cy + 1.5);
+  // East centre double line
+  ctx.moveTo(cx + hw, cy - 1.5); ctx.lineTo(W, cy - 1.5);
+  ctx.moveTo(cx + hw, cy + 1.5); ctx.lineTo(W, cy + 1.5);
+  ctx.stroke();
+
+  // 6. Draw White Zebra Crossing stripes (crosswalks) & Stop Lines (from mod_int.png)
+  ctx.fillStyle = '#ffffff';
+  // North approach
+  for(let x = cx - hw + 4; x < cx + hw - 2; x += 11) { ctx.fillRect(x, cy - hw - 18, 6, 12); }
+  ctx.fillRect(cx - hw, cy - hw - 21, hw, 2); // Stop Line (White)
+  // South approach
+  for(let x = cx - hw + 4; x < cx + hw - 2; x += 11) { ctx.fillRect(x, cy + hw + 6, 6, 12); }
+  ctx.fillRect(cx, cy + hw + 19, hw, 2); // Stop Line (White)
+  // West approach
+  for(let y = cy - hw + 4; y < cy + hw - 2; y += 11) { ctx.fillRect(cx - hw - 18, y, 12, 6); }
+  ctx.fillRect(cx - hw - 21, cy, 2, hw); // Stop Line (White)
+  // East approach
+  for(let y = cy - hw + 4; y < cy + hw - 2; y += 11) { ctx.fillRect(cx + hw + 6, y, 12, 6); }
+  ctx.fillRect(cx + hw + 19, cy - hw, 2, hw); // Stop Line (White)
+
+  // Lane dividers (thin white dashes)
+  ctx.setLineDash([8,6]); ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=0.8;
+  ctx.beginPath();
+  ctx.moveTo(cx-hw*0.50, 0); ctx.lineTo(cx-hw*0.50, cy-hw);
+  ctx.moveTo(cx+hw*0.50, cy+hw); ctx.lineTo(cx+hw*0.50, H);
+  ctx.moveTo(0, cy+hw*0.50); ctx.lineTo(cx-hw, cy+hw*0.50);
+  ctx.moveTo(cx+hw, cy-hw*0.50); ctx.lineTo(W, cy-hw*0.50);
+  ctx.stroke();
   ctx.setLineDash([]);
-  // lane dividers
-  ctx.setLineDash([10,8]);ctx.strokeStyle='#ffffff12';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(cx-Math.min(W,H)*0.09*0.55,0);ctx.lineTo(cx-Math.min(W,H)*0.09*0.55,cy-Math.min(W,H)*0.09);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx+Math.min(W,H)*0.09*0.55,cy+Math.min(W,H)*0.09);ctx.lineTo(cx+Math.min(W,H)*0.09*0.55,H);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx+Math.min(W,H)*0.09,cy-Math.min(W,H)*0.09*0.55);ctx.lineTo(W,cy-Math.min(W,H)*0.09*0.55);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(0,cy+Math.min(W,H)*0.09*0.55);ctx.lineTo(cx-Math.min(W,H)*0.09,cy+Math.min(W,H)*0.09*0.55);ctx.stroke();
-  ctx.setLineDash([]);
-  // green road glow
+
+  // Green road glow indicators
   DIRS.forEach(dir=>{
     if(signals[dir].state!=='green')return;
     const gp={north:{x:cx-hw*0.40,y:cy-hw*0.55},south:{x:cx+hw*0.40,y:cy+hw*0.55},
               east:{x:cx+hw*0.55,y:cy-hw*0.40},west:{x:cx-hw*0.55,y:cy+hw*0.40}}[dir];
     ctx.save();ctx.globalAlpha=0.07;ctx.fillStyle='#00ff88';ctx.beginPath();ctx.arc(gp.x,gp.y,hw*0.75,0,Math.PI*2);ctx.fill();ctx.restore();
   });
+  
   const cx2=canvas.width/2,cy2=canvas.height/2,hw2=Math.min(canvas.width,canvas.height)*0.09;
   drawCross(cx2,cy2,hw2);drawStop(cx2,cy2,hw2);drawArrows(cx2,cy2,hw2);drawLabels(cx2,cy2,hw2);
 }
-function drawCross(cx,cy,hw){
-  ctx.fillStyle='#ffffff1c';const L=hw*0.84,n=5,sw=(L/n)*0.66;
-  for(let i=0;i<n;i++){ctx.fillRect(cx-L/2+i*(L/n),cy-hw-20,sw,15);ctx.fillRect(cx-L/2+i*(L/n),cy+hw+5,sw,15);ctx.fillRect(cx-hw-20,cy-L/2+i*(L/n),15,sw);ctx.fillRect(cx+hw+5,cy-L/2+i*(L/n),15,sw);}
-}
-function drawStop(cx,cy,hw){
-  ctx.strokeStyle='#ffffff65';ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(cx-hw+6,cy-hw-13);ctx.lineTo(cx+hw-6,cy-hw-13);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx-hw+6,cy+hw+13);ctx.lineTo(cx+hw-6,cy+hw+13);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx-hw-13,cy-hw+6);ctx.lineTo(cx-hw-13,cy+hw-6);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx+hw+13,cy-hw+6);ctx.lineTo(cx+hw+13,cy+hw-6);ctx.stroke();
-}
+function drawCross(cx,cy,hw){}
+function drawStop(cx,cy,hw){}
 function drawArrows(cx,cy,hw){
   ctx.fillStyle='#ffffff1a';
   const arw=(x,y,dx,dy,s)=>{
