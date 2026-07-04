@@ -745,16 +745,33 @@ function drawRoad(){
   }
 
   // 3. Draw Main Active Intersecting Roads (dark road grey)
-  ctx.fillStyle='#2c3e50';
+  ctx.fillStyle='#3e3e3e';
   ctx.fillRect(0, cy-hw, W, hw*2);
   ctx.fillRect(cx-hw, 0, hw*2, H);
-  ctx.fillStyle='#34495e';
-  ctx.fillRect(cx-hw, cy-hw, hw*2, hw*2);
 
   // Road surface grain noise
   ctx.save(); ctx.globalAlpha=0.024;
   for(let i=0; i<60; i++){ ctx.fillStyle='#fff'; ctx.fillRect(Math.random()*W, Math.random()*H, Math.random()*3+1, 1); }
   ctx.restore();
+
+  // Draw zebra crossings (crosswalks) at each intersection boundary (Prit2341 style)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
+  // North approach crosswalk
+  for(let x = cx - hw + 4; x < cx + hw; x += 11) {
+    ctx.fillRect(x, cy - hw - 20, 6, 15);
+  }
+  // South approach crosswalk
+  for(let x = cx - hw + 4; x < cx + hw; x += 11) {
+    ctx.fillRect(x, cy + hw + 5, 6, 15);
+  }
+  // West approach crosswalk
+  for(let y = cy - hw + 4; y < cy + hw; y += 11) {
+    ctx.fillRect(cx - hw - 20, y, 15, 6);
+  }
+  // East approach crosswalk
+  for(let y = cy - hw + 4; y < cy + hw; y += 11) {
+    ctx.fillRect(cx + hw + 5, y, 15, 6);
+  }
 
   // Main Kerb lines
   ctx.strokeStyle='#ffffff35'; ctx.lineWidth=1.8;
@@ -1435,6 +1452,8 @@ function tickTraining(dt) {
       if (Math.random() < 0.28) {
         if (trainMode === 'traffic') {
           addLog(`[AI] Training angles (0°, 90°, 180°, 270°) for ${typesList[trainTypeIdx].toUpperCase()}...`, 'info');
+          const mapVal = (0.75 + trainingProgress * 0.244).toFixed(3);
+          addLog(`[AI] Validation step - AMBULANCE mAP@0.5: ${mapVal}, loss: ${trainingLoss.toFixed(4)}`, 'info');
         } else {
           addLog(`[AI] Training layout structure parsing for ${typesList[trainTypeIdx].toUpperCase()}...`, 'info');
         }
