@@ -264,7 +264,7 @@ class Vehicle{
         const A = a1 + t * (a2 - a1);
         const R_start = Math.hypot(pEntry.x - cx, pEntry.y - cy);
         const R_end = Math.hypot(pExit.x - cx, pExit.y - cy);
-        const R_mid = hw * 0.85; // Wider turn for 5-road map 
+        const R_mid = -hw * 0.50; // Hug center roundabout for 5-road map 
         
         const R = (1-t)*(1-t)*R_start + 2*(1-t)*t*R_mid + t*t*R_end;
         const x = cx + R * Math.cos(A);
@@ -908,7 +908,7 @@ const AMB={
         const A = a1 + t * (a2 - a1);
         const R_start = Math.hypot(pEntry.x - cx, pEntry.y - cy);
         const R_end = Math.hypot(pExit.x - cx, pExit.y - cy);
-        const R_mid = hw * 0.85; // Wider turn for 5-road map 
+        const R_mid = -hw * 0.50; // Hug center roundabout for 5-road map 
         
         const R = (1-t)*(1-t)*R_start + 2*(1-t)*t*R_mid + t*t*R_end;
         const x = cx + R * Math.cos(A);
