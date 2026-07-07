@@ -76,8 +76,37 @@ global.document = {
 global.window = {
   addEventListener: () => {},
   performance: { now: () => 0 },
-  requestAnimationFrame: () => {}
+  requestAnimationFrame: () => {},
+  AudioContext: class {
+    constructor() {
+      this.state = 'running';
+      this.currentTime = 0;
+      this.destination = {};
+    }
+    resume() {}
+    createOscillator() {
+      return {
+        type: 'sine',
+        frequency: { setValueAtTime: () => {} },
+        connect: () => {},
+        start: () => {},
+        stop: () => {}
+      };
+    }
+    createGain() {
+      return {
+        gain: {
+          value: 1,
+          setValueAtTime: () => {},
+          linearRampToValueAtTime: () => {},
+          cancelScheduledValues: () => {}
+        },
+        connect: () => {}
+      };
+    }
+  }
 };
+global.AudioContext = global.window.AudioContext;
 global.requestAnimationFrame = () => {};
 global.THREE = {
   Scene: class {}, Color: class {}, PerspectiveCamera: class { get position(){return {set:()=>{}};} },

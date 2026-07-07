@@ -1618,6 +1618,7 @@ function tickAmb(dt){
         
         if(AMB.exitPos >= rc[AMB.exitDir].exitDist) {
           AMB.active=false;phase='resuming';ambPhaseTimer=0;
+          stopSiren();
           document.getElementById('detectionOverlay').style.display='none';
           if(typeof resetSensorUI === 'function') resetSensorUI();
           addLog(`🚑 ${AMB.type === 'fireengine' ? 'Fire Engine' : 'Ambulance'} cleared intersection. Initiating 15s green extension...`,'info');
@@ -1706,6 +1707,7 @@ function triggerAmbulance(forceDir = null, vType = 'ambulance'){
   AMB.pos = Math.max(0, r.stopDist - 400); // Dynamic spawn further back
   AMB.active=true;
   AMB.spd=32;
+  startSiren();
   
   // PREEMPTION: Instantly switch signals!
   const preemptedRoad = CYCLE[cycleIdx][0];
@@ -1750,6 +1752,7 @@ function resumeNormal(){
 }
 function resetSimulation(){
   phase='normal';AMB.active=false;AMB.pos=0;AMB.spd=0;
+  stopSiren();
   detectionProgress=0;ambPhaseTimer=0;cycleIdx=0;cycleT=0;yellowPending=false;
   Object.assign(signals,{north:{state:'green',timer:30},east:{state:'red',timer:60},south:{state:'red',timer:90},west:{state:'red',timer:120}});
   updateSigUI();setPhaseUI('normal');updateTimelineUI(0);resetSensorUI();
@@ -2653,6 +2656,78 @@ function drawCongestionGraph() {
   
   // Reset shadow for subsequent drawing
   ctx2.shadowBlur = 0;
+}
+
+/* ── Web Audio Siren Synth ───────────────────────────────── */
+let audioCtx = null;
+let sirenOsc = null;
+let sirenLfo = null;
+let sirenGain = null;
+
+function startSiren() {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    stopSiren();
+    
+    sirenOsc = audioCtx.createOscillator();
+    sirenLfo = audioCtx.createOscillator();
+    sirenGain = audioCtx.createGain();
+    const lfoGain = audioCtx.createGain();
+    
+    sirenOsc.type = 'triangle';
+    sirenOsc.frequency.setValueAtTime(750, audioCtx.currentTime);
+    
+    sirenLfo.frequency.setValueAtTime(1.5, audioCtx.currentTime);
+    lfoGain.gain.setValueAtTime(250, audioCtx.currentTime);
+    
+    sirenLfo.connect(lfoGain);
+    lfoGain.connect(sirenOsc.frequency);
+    
+    sirenGain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    sirenGain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.5);
+    
+    sirenOsc.connect(sirenGain);
+    sirenGain.connect(audioCtx.destination);
+    
+    sirenOsc.start();
+    sirenLfo.start();
+  } catch (err) {
+    console.error("Failed to start siren audio synth:", err);
+  }
+}
+
+function stopSiren() {
+  try {
+    if (sirenGain && audioCtx) {
+      const curTime = audioCtx.currentTime;
+      sirenGain.gain.cancelScheduledValues(curTime);
+      sirenGain.gain.setValueAtTime(sirenGain.gain.value, curTime);
+      sirenGain.gain.linearRampToValueAtTime(0.001, curTime + 0.6);
+      
+      const osc = sirenOsc;
+      const lfo = sirenLfo;
+      
+      setTimeout(() => {
+        try {
+          if (osc) osc.stop();
+          if (lfo) lfo.stop();
+        } catch (e) {}
+      }, 700);
+      
+      sirenOsc = null;
+      sirenLfo = null;
+      sirenGain = null;
+    }
+  } catch (err) {
+    console.error("Failed to stop siren audio synth:", err);
+  }
 }
 
 /* ── Init ─────────────────────────────────────────────────── */
