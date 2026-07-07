@@ -10,5 +10,9 @@
     "express": "^4.19.2",
     "localtunnel": "^2.0.2"
   },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "puppeteer": "^22.0.0"
+  },
   "private": true
 }

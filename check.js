@@ -1,13 +1,84 @@
 global.CanvasRenderingContext2D = {prototype: {}};
 global.document = {
-  getElementById: () => ({ remove: () => {} }),
-  querySelector: () => ({ clientWidth: 800, clientHeight: 600, appendChild: () => {} })
+  getElementById: (id) => {
+    if (id === 'intersectionCanvas') {
+      return {
+        getContext: () => ({
+          beginPath: () => {},
+          moveTo: () => {},
+          lineTo: () => {},
+          closePath: () => {},
+          stroke: () => {},
+          fill: () => {},
+          fillRect: () => {},
+          clearRect: () => {},
+          save: () => {},
+          restore: () => {},
+          translate: () => {},
+          rotate: () => {},
+          arc: () => {},
+          ellipse: () => {},
+          drawImage: () => {},
+          fillText: () => {},
+          measureText: () => ({ width: 10 }),
+          setLineDash: () => {},
+          createRadialGradient: () => ({ addColorStop: () => {} }),
+          createLinearGradient: () => ({ addColorStop: () => {} })
+        }),
+        width: 800,
+        height: 600,
+        parentElement: { clientWidth: 800, clientHeight: 600 },
+        addEventListener: () => {},
+        style: {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {} }
+      };
+    }
+    return {
+      remove: () => {},
+      addEventListener: () => {},
+      style: {},
+      classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+      appendChild: () => {},
+      removeChild: () => {},
+      children: [],
+      getContext: () => ({
+        beginPath: () => {},
+        moveTo: () => {},
+        lineTo: () => {},
+        closePath: () => {},
+        stroke: () => {},
+        fill: () => {},
+        fillRect: () => {},
+        clearRect: () => {},
+        save: () => {},
+        restore: () => {},
+        translate: () => {},
+        rotate: () => {},
+        arc: () => {},
+        ellipse: () => {},
+        drawImage: () => {},
+        fillText: () => {},
+        measureText: () => ({ width: 10 }),
+        setLineDash: () => {},
+        createRadialGradient: () => ({ addColorStop: () => {} }),
+        createLinearGradient: () => ({ addColorStop: () => {} })
+      })
+    };
+  },
+  querySelector: () => ({ clientWidth: 800, clientHeight: 600, appendChild: () => {} }),
+  createElement: () => ({
+    style: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    appendChild: () => {},
+    append: () => {}
+  })
 };
 global.window = {
   addEventListener: () => {},
   performance: { now: () => 0 },
   requestAnimationFrame: () => {}
 };
+global.requestAnimationFrame = () => {};
 global.THREE = {
   Scene: class {}, Color: class {}, PerspectiveCamera: class { get position(){return {set:()=>{}};} },
   OrbitControls: class { setTarget(){} get target(){ return {set:()=>{}}; } enableDamping(){} update(){} },
