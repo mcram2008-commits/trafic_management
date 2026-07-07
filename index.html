@@ -303,6 +303,23 @@
         </div>
       </div>
 
+      <!-- Live Congestion Analytics Graph Card -->
+      <div class="sensor-card" id="congestionGraphCard" style="margin-top: 10px; border-color: rgba(0, 212, 255, 0.4); background: rgba(10, 15, 30, 0.455);">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center; margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">📈</span>
+            <span class="sensor-name" style="color: #00d4ff; font-weight: bold; letter-spacing: 0.5px;">Live Congestion Graph</span>
+          </div>
+          <span class="sensor-status locked" id="congestionStatus" style="background: rgba(0,212,255,0.15); color: #00d4ff; border-color: rgba(0,212,255,0.3); font-size: 8px; padding: 0 4px; display: flex; align-items: center; height: 16px;">REAL-TIME</span>
+        </div>
+        <div style="text-align: center; background: #060e18; border-radius: 6px; padding: 6px; border: 1px solid #1a3a5c; position: relative; overflow: hidden; height: 110px; display: flex; align-items: center; justify-content: center;">
+          <canvas id="congestionCanvas" width="220" height="100" style="background: #040810; border-radius: 4px;"></canvas>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 8px; font-family: monospace; color: var(--text3); margin-top: 6px; justify-content: center;" id="congestionLegend">
+          <!-- Legend items will be dynamically populated -->
+        </div>
+      </div>
+
       <div class="divider"></div>
 
       <!-- Control Buttons -->

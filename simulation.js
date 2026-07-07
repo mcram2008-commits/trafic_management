@@ -1494,6 +1494,7 @@ function draw(ts){
   }
   scanA+=0.042*simSpeed;AMB.lph+=dt*3;
   tickTraining(dt);
+  tickCongestion(dt);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
@@ -2501,12 +2502,163 @@ function setJunctionMode(roads) {
   });
   
   updateSigUI();
+  updateCongestionLegend();
+  congestionHistory = []; // Reset history when layout changes
   addLog(`🛣️ Intersection layout switched to ${roads}-Way Mode!`, 'success');
+}
+
+/* ── Live Congestion Graph ───────────────────────────────── */
+const congestionCanvas = document.getElementById('congestionCanvas');
+const congestionCtx = congestionCanvas ? congestionCanvas.getContext('2d') : null;
+let congestionHistory = [];
+const maxHistoryPoints = 35;
+let congestionSampleTimer = 0;
+
+function updateCongestionLegend() {
+  const legendDiv = document.getElementById('congestionLegend');
+  if (!legendDiv) return;
+  legendDiv.innerHTML = '';
+  
+  const colors = {
+    north: '#00d4ff',
+    east: '#ffd700',
+    south: '#ff3355',
+    west: '#a855f7',
+    northeast: '#00ff88'
+  };
+  
+  activeDirs.forEach(d => {
+    const capitalized = d[0].toUpperCase() + d.slice(1);
+    const item = document.createElement('div');
+    item.style.display = 'flex';
+    item.style.alignItems = 'center';
+    item.style.gap = '4px';
+    item.innerHTML = `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${colors[d]}"></span> ${capitalized}: <span id="congCount-${d}" style="font-weight:bold; color:#ffffff;">0</span>`;
+    legendDiv.appendChild(item);
+  });
+}
+
+function tickCongestion(dt) {
+  congestionSampleTimer += dt;
+  if (congestionSampleTimer >= 1.0) { // Sample every 1 second
+    congestionSampleTimer = 0;
+    
+    // Sample waiting vehicles for each active direction
+    const sample = {};
+    activeDirs.forEach(d => {
+      // count of waiting vehicles in direction d
+      const waiting = vehicles.filter(v => v.dir === d && v.spd < 1).length;
+      sample[d] = waiting;
+      
+      // Update count in legend in real-time
+      const countSpan = document.getElementById(`congCount-${d}`);
+      if (countSpan) {
+        countSpan.textContent = waiting;
+      }
+    });
+    
+    congestionHistory.push(sample);
+    if (congestionHistory.length > maxHistoryPoints) {
+      congestionHistory.shift();
+    }
+  }
+  
+  drawCongestionGraph();
+}
+
+function drawCongestionGraph() {
+  if (!congestionCtx || !congestionCanvas) return;
+  const tc = congestionCanvas;
+  const ctx2 = congestionCtx;
+  
+  ctx2.clearRect(0, 0, tc.width, tc.height);
+  
+  // Draw subtle grid lines
+  ctx2.strokeStyle = '#0e1a2b';
+  ctx2.lineWidth = 0.8;
+  const gridSpacing = 16;
+  for (let x = 0; x < tc.width; x += gridSpacing) {
+    ctx2.beginPath(); ctx2.moveTo(x, 0); ctx2.lineTo(x, tc.height); ctx2.stroke();
+  }
+  for (let y = 0; y < tc.height; y += gridSpacing) {
+    ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(tc.width, y); ctx2.stroke();
+  }
+  
+  if (congestionHistory.length < 2) return;
+  
+  const colors = {
+    north: '#00d4ff',
+    east: '#ffd700',
+    south: '#ff3355',
+    west: '#a855f7',
+    northeast: '#00ff88'
+  };
+  
+  // Find max congestion value in history to scale graph dynamically (min scale = 5)
+  let maxVal = 5;
+  congestionHistory.forEach(sample => {
+    Object.values(sample).forEach(val => {
+      if (val > maxVal) maxVal = val;
+    });
+  });
+  
+  const paddingX = 10;
+  const paddingY = 10;
+  const graphW = tc.width - 2 * paddingX;
+  const graphH = tc.height - 2 * paddingY;
+  
+  // Draw line for each active direction
+  activeDirs.forEach(d => {
+    ctx2.strokeStyle = colors[d];
+    ctx2.lineWidth = 1.8;
+    ctx2.shadowBlur = 4;
+    ctx2.shadowColor = colors[d];
+    ctx2.beginPath();
+    
+    congestionHistory.forEach((sample, idx) => {
+      const val = sample[d] || 0;
+      const x = paddingX + (idx / (maxHistoryPoints - 1)) * graphW;
+      const y = tc.height - paddingY - (val / maxVal) * graphH;
+      
+      if (idx === 0) {
+        ctx2.moveTo(x, y);
+      } else {
+        ctx2.lineTo(x, y);
+      }
+    });
+    ctx2.stroke();
+    
+    // Draw subtle area fill below the line
+    ctx2.save();
+    ctx2.shadowBlur = 0;
+    ctx2.globalAlpha = 0.08;
+    ctx2.fillStyle = colors[d];
+    ctx2.beginPath();
+    congestionHistory.forEach((sample, idx) => {
+      const val = sample[d] || 0;
+      const x = paddingX + (idx / (maxHistoryPoints - 1)) * graphW;
+      const y = tc.height - paddingY - (val / maxVal) * graphH;
+      if (idx === 0) {
+        ctx2.moveTo(x, tc.height - paddingY);
+        ctx2.lineTo(x, y);
+      } else {
+        ctx2.lineTo(x, y);
+      }
+    });
+    ctx2.lineTo(paddingX + ((congestionHistory.length - 1) / (maxHistoryPoints - 1)) * graphW, tc.height - paddingY);
+    ctx2.closePath();
+    ctx2.fill();
+    ctx2.restore();
+  });
+  
+  // Reset shadow for subsequent drawing
+  ctx2.shadowBlur = 0;
 }
 
 /* ── Init ─────────────────────────────────────────────────── */
 updateSigUI();setPhaseUI('normal');updateTimelineUI(0);updateClock();
 toggleAuto(); // Turn on 1-minute auto mode on startup!
+updateCongestionLegend();
 addLog('APTMS v5.0 — Correct vehicle angles active.','info');
 addLog('🚗 Car | 🏍 Bike | 🚙 SUV | 🚛 Truck | 🚌 Bus | 🚐 Van | 🛺 Auto-Rickshaw | 🚜 Tractor | 🚙 Jeep | 🚓 Police','info');
 addLog('Ambulance scheduled to arrive automatically every 1 minute.','info');
