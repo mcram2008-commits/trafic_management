@@ -184,7 +184,14 @@
 
     <!-- Right Panel: Signal Control & Stats -->
     <aside class="panel panel-right">
-      <h3 class="panel-title"><span class="panel-icon">🚦</span> Signal Control</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="panel-title" style="margin: 0;"><span class="panel-icon">🚦</span> Signal Control</h3>
+        <div style="display: flex; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px;">
+          <button class="switcher-btn" id="btnJunc3" onclick="changeJunctionMode(3)" style="background: transparent; color: #8892b0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">3 ROADS</button>
+          <button class="switcher-btn active" id="btnJunc4" onclick="changeJunctionMode(4)" style="background: var(--accent); color: #0a192f; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; margin-left: 2px;">4 ROADS</button>
+          <button class="switcher-btn" id="btnJunc5" onclick="changeJunctionMode(5)" style="background: transparent; color: #8892b0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; margin-left: 2px;">5 ROADS</button>
+        </div>
+      </div>
 
       <div class="signals-grid">
         <div class="signal-card" id="sigNorth">
@@ -229,6 +236,17 @@
           </div>
           <div class="signal-timer" id="wTimer">30s</div>
           <div class="signal-state" id="wState">RED</div>
+        </div>
+
+        <div class="signal-card" id="sigNortheast" style="display: none; grid-column: span 2;">
+          <div class="signal-dir">⬈ NORTHEAST</div>
+          <div class="traffic-light">
+            <div class="light red active" id="neRed"></div>
+            <div class="light yellow" id="neYellow"></div>
+            <div class="light green" id="neGreen"></div>
+          </div>
+          <div class="signal-timer" id="neTimer">120s</div>
+          <div class="signal-state" id="neState">RED</div>
         </div>
       </div>
 

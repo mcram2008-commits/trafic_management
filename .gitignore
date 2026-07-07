@@ -5,3 +5,8 @@ database.db
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# Temporary search logs and assets
+grep_*.txt
+tmp_*.png
+*.bak

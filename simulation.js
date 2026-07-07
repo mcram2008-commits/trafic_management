@@ -23,8 +23,29 @@ let ctx=canvas.getContext('2d');
 function resize(){canvas.width=canvas.parentElement.clientWidth;canvas.height=canvas.parentElement.clientHeight;}
 resize();window.addEventListener('resize',resize);
 
+const imgBike = new Image(); if(typeof VEH_SRC !== 'undefined') imgBike.src = VEH_SRC;
+const imgCar = new Image(); if(typeof CAR_SRC !== 'undefined') imgCar.src = CAR_SRC;
+const imgTractor = new Image(); if(typeof TRACTOR_SRC !== 'undefined') imgTractor.src = TRACTOR_SRC;
+const imgBus = new Image(); if(typeof BUS_SRC !== 'undefined') imgBus.src = BUS_SRC;
+const imgSchoolVan = new Image(); if(typeof SCHOOLVAN_SRC !== 'undefined') imgSchoolVan.src = SCHOOLVAN_SRC;
+const imgTruck = new Image(); if(typeof TRUCK_SRC !== 'undefined') imgTruck.src = TRUCK_SRC;
+const imgAuto = new Image(); if(typeof AUTO_SRC !== 'undefined') imgAuto.src = AUTO_SRC;
+const imgThar = new Image(); if(typeof THAR_SRC !== 'undefined') imgThar.src = THAR_SRC;
+const imgPolice = new Image(); if(typeof POLICE_SRC !== 'undefined') imgPolice.src = POLICE_SRC;
+const imgAmbulance = new Image(); if(typeof AMB_SRC !== 'undefined') imgAmbulance.src = AMB_SRC;
+const imgFireEngine = new Image(); if(typeof FIREENGINE_SRC !== 'undefined') imgFireEngine.src = FIREENGINE_SRC;
+const imgBullet = new Image(); if(typeof BULLET_SRC !== 'undefined') imgBullet.src = BULLET_SRC;
+const imgScooter = new Image(); if(typeof SCOOTER_SRC !== 'undefined') imgScooter.src = SCOOTER_SRC;
+const imgScorpio = new Image(); if(typeof SCORPIO_SRC !== 'undefined') imgScorpio.src = SCORPIO_SRC;
+const imgSwift = new Image(); if(typeof SWIFT_SRC !== 'undefined') imgSwift.src = SWIFT_SRC;
+const imgGarbage = new Image(); if(typeof GARBAGE_SRC !== 'undefined') imgGarbage.src = GARBAGE_SRC;
+const imgTanker = new Image(); if(typeof TANKER_SRC !== 'undefined') imgTanker.src = TANKER_SRC;
+
+
 /* ── State ────────────────────────────────────────────────── */
-const DIRS=['north','east','south','west'];
+const DIRS=['north','east','south','west','northeast'];
+let activeDirs=['north','east','south','west'];
+let activeRoadCount=4;
 let simSpeed=1.0,autoMode=false,autoTimer=null,phase='normal';
 let totalAmb=0,responseTimes=[],detectionStart=0;
 let detectionProgress=0,ambPhaseTimer=0;
@@ -33,6 +54,7 @@ const signals={
   east: {state:'yellow', timer:30},
   south:{state:'red',    timer:60},
   west: {state:'red',    timer:90},
+  northeast: {state:'red', timer:120}
 };
 const CYCLE=[['north',30],['east',30],['south',30],['west',30]];
 let cycleIdx=0,cycleT=0,yellowPending=false;
@@ -50,55 +72,116 @@ let cycleIdx=0,cycleT=0,yellowPending=false;
 function roadCfg(){
   const cx=canvas.width/2,cy=canvas.height/2;
   const hw=Math.min(canvas.width,canvas.height)*0.09;
-  const lo=hw*0.40;   // lane offset from road centre
-  const SO=100;       // spawn offset off-screen
-  const EX=220;       // exit distance past intersection centre
+  const lo=hw*0.40;   
+  const SO=100;       
+  const EX=220;       
+  
+  if (activeRoadCount === 5) {
+    const Dist = Math.max(canvas.width, canvas.height) / 2 + SO;
+    const getCfg = (angleDeg) => {
+      const a = angleDeg * Math.PI / 180;
+      const dx = -Math.cos(a), dy = -Math.sin(a);
+      const nx = -dy, ny = dx; // Left lane offset (Left-hand traffic)
+      return {
+        spawnX: cx + Math.cos(a)*Dist + nx*lo,
+        spawnY: cy + Math.sin(a)*Dist + ny*lo,
+        dx: dx, dy: dy,
+        angle: Math.atan2(dy, dx) + Math.PI/2,
+        stopDist: Dist - hw*2.6,
+        exitDist: Dist + hw*2.6 + EX
+      };
+    };
+    return {
+      north: getCfg(-90),
+      northeast: getCfg(-18),
+      east: getCfg(54),
+      south: getCfg(126),
+      west: getCfg(198)
+    };
+  }
+  
   return {
-    // North: spawns at top, travels DOWN → front = DOWN → angle = π
     north:{spawnX:cx-lo,      spawnY:-SO,                 dx:0, dy:1,  angle:Math.PI,
            stopDist: cy-hw-21+SO,
            exitDist: cy+hw+EX+SO},
-    // South: spawns at bottom, travels UP → front = UP → angle = 0
     south:{spawnX:cx+lo,      spawnY:canvas.height+SO,    dx:0, dy:-1, angle:0,
            stopDist: canvas.height+SO-(cy+hw+19),
            exitDist: canvas.height+SO-(cy-hw-EX)},
-    // East: spawns at right, travels LEFT → front = LEFT → angle = −π/2
     east: {spawnX:canvas.width+SO, spawnY:cy-lo,          dx:-1,dy:0,  angle:-Math.PI/2,
            stopDist: canvas.width+SO-(cx+hw+19),
            exitDist: canvas.width+SO-(cx-hw-EX)},
-    // West: spawns at left, travels RIGHT → front = RIGHT → angle = π/2
     west: {spawnX:-SO,        spawnY:cy+lo,               dx:1, dy:0,  angle:Math.PI/2,
            stopDist: cx-hw-21+SO,
            exitDist: cx+hw+EX+SO},
+    northeast: {
+      spawnX: cx + 340 * 0.707, spawnY: cy - 340 * 0.707,
+      dx: -0.707, dy: 0.707, angle: -Math.PI * 0.75,
+      stopDist: 340 - hw*1.5,
+      exitDist: 340 + hw*1.5 + EX
+    }
   };
 }
 
 /* ── Vehicle specs ────────────────────────────────────────── */
 const VSPEC={
-  car:  {wid:22,len:40,maxSpd:82,acc:60,dec:130,gap:1.4},
-  bike: {wid:10,len:22,maxSpd:98,acc:85,dec:165,gap:1.2},
-  suv:  {wid:26,len:46,maxSpd:76,acc:50,dec:108,gap:1.5},
-  truck:{wid:28,len:74,maxSpd:56,acc:24,dec:72, gap:1.8},
-  bus:  {wid:30,len:90,maxSpd:50,acc:18,dec:62, gap:2.0},
-  van:  {wid:24,len:52,maxSpd:68,acc:44,dec:98, gap:1.5},
-  auto: {wid:17,len:30,maxSpd:72,acc:64,dec:138,gap:1.3},
-  jeep: {wid:24,len:42,maxSpd:74,acc:48,dec:110,gap:1.5},
-  tractor:{wid:26,len:44,maxSpd:45,acc:22,dec:95,gap:1.6},
-  police:{wid:22,len:40,maxSpd:90,acc:75,dec:140,gap:1.3},
-  fire:  {wid:28,len:72,maxSpd:82,acc:32,dec:112,gap:1.8},
+  car:       {wid:48, len:60, maxSpd:82, acc:60, dec:130, gap:1.4},
+  bike:      {wid:25, len:35, maxSpd:98, acc:85, dec:165, gap:1.2},
+  suv:       {wid:55, len:70, maxSpd:76, acc:50, dec:108, gap:1.5},
+  truck:     {wid:65, len:110,maxSpd:56, acc:24, dec:72,  gap:1.8},
+  bus:       {wid:70, len:120,maxSpd:50, acc:18, dec:62,  gap:2.0},
+  van:       {wid:50, len:70, maxSpd:68, acc:44, dec:98,  gap:1.5},
+  auto:      {wid:38, len:46, maxSpd:72, acc:64, dec:138, gap:1.3},
+  shareauto: {wid:44, len:55, maxSpd:70, acc:58, dec:125, gap:1.4},
+  tataace:   {wid:45, len:58, maxSpd:68, acc:44, dec:98,  gap:1.5},
+  erickshaw: {wid:36, len:42, maxSpd:60, acc:50, dec:120, gap:1.3},
+  bullet:    {wid:28, len:40, maxSpd:95, acc:80, dec:150, gap:1.2},
+  garbage:   {wid:62, len:100,maxSpd:55, acc:22, dec:70,  gap:1.8},
+  tanker:    {wid:65, len:115,maxSpd:50, acc:20, dec:65,  gap:1.9},
+  schoolvan: {wid:52, len:90, maxSpd:60, acc:35, dec:80,  gap:1.7},
+  police:    {wid:55, len:70, maxSpd:90, acc:70, dec:120, gap:1.4},
+  fireengine:{wid:70, len:130,maxSpd:55, acc:18, dec:60,  gap:2.2},
+  scooter:   {wid:25, len:38, maxSpd:85, acc:75, dec:140, gap:1.2},
+  thar:      {wid:55, len:65, maxSpd:75, acc:55, dec:110, gap:1.5},
+  tractor:   {wid:60, len:80, maxSpd:40, acc:15, dec:50,  gap:1.6},
+  autorickshaw: {wid:45, len:55, maxSpd:72, acc:64, dec:138, gap:1.3},
+  scorpio:   {wid:55, len:70, maxSpd:85, acc:60, dec:120, gap:1.5},
+  swift:     {wid:48, len:60, maxSpd:90, acc:70, dec:130, gap:1.4},
+  ambulance: {wid:45, len:75, maxSpd:120, acc:90, dec:150, gap:1.5},
+  splendor:  {wid:35, len:65, maxSpd:75, acc:60, dec:120, gap:1.2},
+  ktm:       {wid:38, len:68, maxSpd:95, acc:90, dec:150, gap:1.2},
+  suprobus:  {wid:65, len:110, maxSpd:65, acc:40, dec:90, gap:1.6},
+  bajajauto: {wid:55, len:70, maxSpd:50, acc:35, dec:80, gap:1.4},
+  bluerickshaw:{wid:55, len:70, maxSpd:40, acc:30, dec:70, gap:1.3},
 };
 const VCOL={
-  car:  ['#cc2233','#1144cc','#116633','#777','#f0f0f0','#cc8800','#6633bb','#dd5511'],
-  bike: ['#111111','#1a1a1a','#cc2200','#002299','#005500'],
-  suv:  ['#222244','#1a3a1a','#3a2a1a','#444','#2a3a4a','#331122'],
-  truck:['#1a1a2a','#1a2a1a','#3a2a0a','#2a1a1a','#003344'],
-  bus:  ['#cc8800','#dd9900','#2255aa','#cc3300'],
-  van:  ['#336699','#333344','#225533','#553322','#888899'],
-  auto: ['#cc8800','#ffaa00','#dd7700'],
-  jeep: ['#1b3f2b','#3c4e36','#4a3f2d','#2b2b2b','#691b1b'],
-  tractor:['#dd2211','#228822','#0044bb'],
-  police:['#111111'],
-  fire:  ['#d32f2f'],
+  car:       ['#cc2233','#1144cc','#116633','#777','#f0f0f0','#cc8800','#6633bb','#dd5511'],
+  bike:      ['#111111','#1a1a1a','#cc2200','#002299','#005500'],
+  suv:       ['#222244','#1a3a1a','#3a2a1a','#444','#2a3a4a','#331122'],
+  truck:     ['#1a1a2a','#1a2a1a','#3a2a0a','#2a1a1a','#003344'],
+  bus:       ['#cc8800','#dd9900','#2255aa','#cc3300'],
+  van:       ['#336699','#333344','#225533','#553322','#888899'],
+  auto:      ['#cc8800','#ffaa00','#dd7700'],
+  shareauto: ['#ffcc00','#ffaa00'],
+  tataace:   ['#ffffff'],
+  erickshaw: ['#00ff00'],
+  bullet:    ['#000000'],
+  garbage:   ['#008800'],
+  tanker:    ['#ff0000'],
+  schoolvan: ['#ffee00'],
+  police:    ['#ffffff'],
+  fireengine:['#ff1111'],
+  scooter:   ['#ff5500'],
+  thar:      ['#223322'],
+  tractor:   ['#dd1111'],
+  autorickshaw: ['#ffd700'],
+  scorpio:   ['#ffffff'],
+  swift:     ['#ffffff'],
+  ambulance: ['#ffffff'],
+  splendor:  ['#ffffff'],
+  ktm:       ['#ffffff'],
+  suprobus:  ['#ffffff'],
+  bajajauto: ['#ffffff'],
+  bluerickshaw: ['#ffffff'],
 };
 
 /* ── Vehicle class ────────────────────────────────────────── */
@@ -106,25 +189,220 @@ let _uid=0;
 class Vehicle{
   constructor(dir){
     this.id=_uid++;this.dir=dir;
-    const t=['car','car','car','bike','bike','suv','truck','bus','van','auto','jeep','tractor','police','fire'];
-    this.type=t[Math.floor(Math.random()*t.length)];
+    const t=['bike', 'car', 'tractor', 'bus', 'schoolvan', 'truck', 'auto', 'thar', 'police', 'ambulance', 'fireengine', 'bullet', 'scooter', 'scorpio', 'swift', 'garbage', 'tanker'];
+    let chosenType=t[Math.floor(Math.random()*t.length)];
+    if (chosenType === 'ambulance' || chosenType === 'fireengine') {
+      const emergencyCount = typeof vehicles !== 'undefined' ? vehicles.filter(v => v.type === 'ambulance' || v.type === 'fireengine').length : 0;
+      if (emergencyCount >= 1 || (typeof phase !== 'undefined' && phase !== 'normal')) {
+          chosenType = 'car'; 
+      } else {
+          const d = this.dir;
+          const vt = chosenType;
+          setTimeout(() => { if(typeof triggerAmbulance === 'function') triggerAmbulance(d, vt); }, 100);
+          chosenType = 'car';
+      }
+    }
+    this.type = chosenType;
     this.spec=VSPEC[this.type];
     const cp=VCOL[this.type];this.col=cp[Math.floor(Math.random()*cp.length)];
     this.pos=0;this.spd=this.spec.maxSpd*(0.5+Math.random()*0.28);this.done=false;
+    this.turning=false; this.completedTurn=false; this.exitDir=null; this.exitPos=0; this.turnStartPos=0;
+    this.currentAngle=0;
   }
-  xy(rc){const r=rc[this.dir];return{x:r.spawnX+r.dx*this.pos,y:r.spawnY+r.dy*this.pos};}
+  xy(rc){
+    const r=rc[this.dir];
+    const cx=canvas.width/2,cy=canvas.height/2;
+    const hw=Math.min(canvas.width,canvas.height)*0.09;
+    const lo=hw*0.40;
+    
+    let pExit = {x: cx, y: cy, dx: 0, dy: -1};
+    if (this.exitDir) {
+      const re = rc[this.exitDir];
+      if (activeRoadCount === 5) {
+        const nx = -re.dy, ny = re.dx;
+        const stop1 = re.stopDist - this.spec.len/2 - 6;
+        const entryX = re.spawnX + re.dx * stop1;
+        const entryY = re.spawnY + re.dy * stop1;
+        pExit = { x: entryX - 2*nx*lo, y: entryY - 2*ny*lo, dx: -re.dx, dy: -re.dy };
+      } else {
+        pExit = {
+          north: {x: cx+lo, y: cy-hw, dx: 0, dy: -1},
+          south: {x: cx-lo, y: cy+hw, dx: 0, dy: 1},
+          east:  {x: cx+hw, y: cy+lo, dx: 1, dy: 0},
+          west:  {x: cx-hw, y: cy-lo, dx: -1, dy: 0},
+          northeast: {x: cx+hw*1.5*0.707, y: cy-hw*1.5*0.707, dx: 0.707, dy: -0.707}
+        }[this.exitDir];
+      }
+    }
+    
+    if (this.completedTurn) {
+      this.currentAngle = Math.atan2(pExit.dy, pExit.dx) + Math.PI/2;
+      return {x: pExit.x + pExit.dx * this.exitPos, y: pExit.y + pExit.dy * this.exitPos};
+    }
+    
+    if (this.turning && this.exitDir) {
+      const stop1 = r.stopDist - this.spec.len/2 - 6;
+      const nx = -r.dy, ny = r.dx;
+      const shift = this.lph || 0;
+      const pEntry = {
+        x: r.spawnX + r.dx * stop1 + nx * shift,
+        y: r.spawnY + r.dy * stop1 + ny * shift
+      };
+      
+      const turnDist = this.turnTotalDist || (hw * 2.5);
+      const t = Math.min(1, Math.max(0, (this.pos - this.turnStartPos) / turnDist));
+      
+      if (activeRoadCount === 5) {
+        let a1 = Math.atan2(pEntry.y - cy, pEntry.x - cx);
+        let a2 = Math.atan2(pExit.y - cy, pExit.x - cx);
+        while (a2 <= a1) a2 += Math.PI * 2;
+        
+        if (!this.turnTotalDist) {
+          this.turnTotalDist = Math.max((a2 - a1) * (hw * 1.5), hw * 1.8);
+        }
+        
+        const A = a1 + t * (a2 - a1);
+        const R_start = Math.hypot(pEntry.x - cx, pEntry.y - cy);
+        const R_end = Math.hypot(pExit.x - cx, pExit.y - cy);
+        const R_mid = hw * 0.85; // Wider turn for 5-road map 
+        
+        const R = (1-t)*(1-t)*R_start + 2*(1-t)*t*R_mid + t*t*R_end;
+        const x = cx + R * Math.cos(A);
+        const y = cy + R * Math.sin(A);
+        
+        const dR_dt = 2*(t-1)*R_start + 2*(1-2*t)*R_mid + 2*t*R_end;
+        const dA_dt = a2 - a1;
+        const dx = dR_dt * Math.cos(A) - R * Math.sin(A) * dA_dt;
+        const dy = dR_dt * Math.sin(A) + R * Math.cos(A) * dA_dt;
+        
+        this.currentAngle = Math.atan2(dy, dx) + Math.PI/2;
+        return {x, y};
+      }
+      
+      const pCtrl = {x: cx, y: cy};
+      const x = (1-t)*(1-t)*pEntry.x + 2*(1-t)*t*pCtrl.x + t*t*pExit.x;
+      const y = (1-t)*(1-t)*pEntry.y + 2*(1-t)*t*pCtrl.y + t*t*pExit.y;
+      
+      const dx = 2*(1-t)*(pCtrl.x - pEntry.x) + 2*t*(pExit.x - pCtrl.x);
+      const dy = 2*(1-t)*(pCtrl.y - pEntry.y) + 2*t*(pExit.y - pCtrl.y);
+      this.currentAngle = Math.atan2(dy, dx) + Math.PI/2;
+      return {x, y};
+    }
+    
+    this.currentAngle = r.angle;
+    const nx = -r.dy, ny = r.dx;
+    const shift = this.lph || 0;
+    return {
+      x: r.spawnX + r.dx * this.pos + nx * shift,
+      y: r.spawnY + r.dy * this.pos + ny * shift
+    };
+  }
+
   update(dt,rc,all){
     const r=rc[this.dir],sig=signals[this.dir].state;
     const stopLine=r.stopDist - this.spec.len/2 - 6,dist=stopLine-this.pos;
-    const ahead=all.filter(v=>v.id!==this.id&&v.dir===this.dir&&v.pos>this.pos).sort((a,b)=>a.pos-b.pos)[0];
-    // Realistic traffic stopping behavior: only stop if before the stop line, or if already slowing/stopped near it.
-    // Vehicles that have already entered the intersection will clear it smoothly.
+    
+    if (this.completedTurn) {
+      // Find the closest vehicle ahead in the same exit lane
+      const exitAheadList = all.filter(v => v.id !== this.id && v.completedTurn && v.exitDir === this.exitDir && v.exitPos > this.exitPos);
+      
+      // Also consider global AMB if it is in the same exit lane and ahead
+      const globalAmbExitAhead = AMB.active && AMB.completedTurn && AMB.exitDir === this.exitDir && AMB.exitPos > this.exitPos;
+      
+      let exitAhead = exitAheadList.sort((a,b)=>a.exitPos-b.exitPos)[0];
+      if (globalAmbExitAhead) {
+        if (!exitAhead || AMB.exitPos < exitAhead.exitPos) {
+          exitAhead = {
+            exitPos: AMB.exitPos,
+            spd: AMB.spd,
+            spec: VSPEC[AMB.type || 'ambulance'] || { len: 75, gap: 1.5 }
+          };
+        }
+      }
+      
+      let desired = this.spec.maxSpd;
+      if (exitAhead) {
+        const gap = exitAhead.exitPos - exitAhead.spec.len/2 - (this.exitPos + this.spec.len/2);
+        const safe = this.spec.len * this.spec.gap + 10;
+        if(gap < safe && gap > 0) desired = Math.min(desired, exitAhead.spd * (gap/safe));
+        else if (gap <= 0) desired = 0;
+      }
+      
+      this.spd = this.spd < desired ? Math.min(desired, this.spd + this.spec.acc * dt) : Math.max(desired, this.spd - this.spec.dec * dt);
+      if(this.spd < 0.5 && desired === 0) this.spd = 0;
+      
+      this.exitPos += this.spd * dt;
+      
+      if (exitAhead) {
+        const minExitPos = exitAhead.exitPos - exitAhead.spec.len/2 - this.spec.len/2 - 2;
+        if (this.exitPos > minExitPos) {
+          this.exitPos = minExitPos;
+          this.spd = exitAhead.spd;
+        }
+      }
+      
+      if (this.exitPos > r.exitDist) this.done = true;
+      return;
+    }
+    
+    if(this.pos >= stopLine && !this.turning) {
+      const possibleExits = activeDirs.filter(d => d !== this.dir);
+      if (possibleExits.length > 0) {
+        this.turning = true;
+        this.turnStartPos = stopLine;
+        this.exitDir = possibleExits[Math.floor(Math.random() * possibleExits.length)];
+      }
+    }
+    if(this.turning) {
+      const turnDist = this.turnTotalDist || (Math.min(canvas.width,canvas.height)*0.09 * 2.5);
+      if (this.pos >= this.turnStartPos + turnDist) {
+        this.completedTurn = true;
+        this.exitPos = 0;
+      }
+    }
+
+    let aheadList=all.filter(v=>v.id!==this.id&&v.dir===this.dir&&!v.completedTurn&&v.pos>this.pos);
+    if (this.type === 'ambulance') {
+        aheadList = aheadList.filter(v => v.type === 'ambulance'); // Ambulance ignores regular vehicles to pass them
+    }
+    let ahead = aheadList.sort((a,b)=>a.pos-b.pos)[0];
+
+    // Also check if global AMB is ahead of us on the same road
+    const globalAmbAhead = AMB.active && AMB.dir === this.dir && !AMB.completedTurn && AMB.pos > this.pos;
+    if (globalAmbAhead) {
+      if (!ahead || AMB.pos < ahead.pos) {
+        ahead = {
+          pos: AMB.pos,
+          spd: AMB.spd,
+          spec: VSPEC[AMB.type || 'ambulance'] || { len: 75, gap: 1.5 }
+        };
+      }
+    }
+
+    // Vehicles give way to ambulance (both regular ones and the Global AMB)
+    const ambNear = all.find(v => v.type === 'ambulance' && v.dir === this.dir && (this.pos - v.pos) < 250 && (v.pos - this.pos) < 100);
+    const globalAmbNear = AMB.active && AMB.dir === this.dir && (this.pos - AMB.pos) < 250 && (AMB.pos - this.pos) < 100;
+    
+    let targetLph = 0;
+    if (this.type !== 'ambulance' && (ambNear || globalAmbNear)) {
+        targetLph = 28; // Shift 28 pixels sideways to give way!
+    }
+    
+    if (typeof this.lph === 'undefined') this.lph = 0;
+    const shiftSpeed = 80; // pixels per second
+    if (this.lph < targetLph) {
+        this.lph = Math.min(targetLph, this.lph + shiftSpeed * dt);
+    } else if (this.lph > targetLph) {
+        this.lph = Math.max(targetLph, this.lph - shiftSpeed * dt);
+    }
+
     const mustStop=(sig==='red'||sig==='yellow')&&!(phase==='priority'&&this.dir===AMB.dir) && (this.pos < stopLine || (this.pos < stopLine + 20 && this.spd < 5));
     let desired=this.spec.maxSpd;
     if(mustStop&&dist>0){const bd=(this.spd*this.spd)/(2*this.spec.dec);if(dist<=bd+18)desired=0;}
     if(mustStop&&this.pos>=stopLine){this.pos=stopLine;desired=0;}
+    
     if(ahead){
-      const gap=ahead.pos-this.spec.len/2-(this.pos+this.spec.len/2);
+      const gap=ahead.pos-ahead.spec.len/2-(this.pos+this.spec.len/2);
       const safe=this.spec.len*this.spec.gap+10;
       if(gap<safe&&gap>0)desired=Math.min(desired,ahead.spd*(gap/safe));
       else if(gap<=0)desired=0;
@@ -132,12 +410,52 @@ class Vehicle{
     this.spd=this.spd<desired?Math.min(desired,this.spd+this.spec.acc*dt):Math.max(desired,this.spd-this.spec.dec*dt);
     if(this.spd<0.5&&desired===0)this.spd=0;
     this.pos+=this.spd*dt;
+    if (ahead) {
+      const minPos = ahead.pos - ahead.spec.len/2 - this.spec.len/2 - 2;
+      if (this.pos > minPos) {
+        this.pos = minPos;
+        this.spd = ahead.spd;
+      }
+    }
     if(this.pos>=r.exitDist)this.done=true;
   }
   draw(rc){
     const r=rc[this.dir],p=this.xy(rc);
-    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(r.angle);
-    VDRAW[this.type](this.spec.wid,this.spec.len,this.col,this.spd);
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(this.currentAngle);
+    
+    // Pseudo-3D Drop Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 4;
+    
+    let img = null;
+    if (this.type === 'car') img = imgCar;
+    else if (this.type === 'bike') img = imgBike;
+    else if (this.type === 'tractor') img = imgTractor;
+    else if (this.type === 'bus') img = imgBus;
+    else if (this.type === 'schoolvan') img = imgSchoolVan;
+    else if (this.type === 'truck') img = imgTruck;
+    else if (this.type === 'auto') img = imgAuto;
+    else if (this.type === 'thar') img = imgThar;
+    else if (this.type === 'police') img = imgPolice;
+    else if (this.type === 'ambulance') img = imgAmbulance;
+    else if (this.type === 'fireengine') img = imgFireEngine;
+    else if (this.type === 'bullet') img = imgBullet;
+    else if (this.type === 'garbage') img = imgGarbage;
+    else if (this.type === 'tanker') img = imgTanker;
+    else if (this.type === 'scooter') img = imgScooter;
+    else if (this.type === 'scorpio') img = imgScorpio;
+    else if (this.type === 'swift') img = imgSwift;
+
+    if (img && img.src) {
+      ctx.drawImage(img, -this.spec.wid/2, -this.spec.len/2, this.spec.wid, this.spec.len);
+    } else {
+      ctx.fillStyle = this.col;
+      ctx.fillRect(-this.spec.wid/2, -this.spec.len/2, this.spec.wid, this.spec.len);
+    }
     ctx.restore();
 
     // AI Camera Multi-Object Detection (YOLO simulation)
@@ -532,12 +850,102 @@ const VDRAW={
 /* ════════════════════════════════════════════════════════════
    AMBULANCE  — large, clearly visible, correct angle via rc
    ════════════════════════════════════════════════════════════ */
-const AMB={dir:'south',pos:0,active:false,spd:0,lph:0};
+const AMB={
+  dir:'south',pos:0,active:false,spd:0,lph:0,
+  turning: false, completedTurn: false, turnStartPos: 0, exitDir: null, exitPos: 0, currentAngle: 0, turnTotalDist: 0,
+  xy: function(rc) {
+    const r=rc[this.dir];
+    const cx=canvas.width/2,cy=canvas.height/2;
+    const hw=Math.min(canvas.width,canvas.height)*0.09;
+    const lo=hw*0.40;
+    
+    let pExit = {x: cx, y: cy, dx: 0, dy: -1};
+    if (this.exitDir) {
+      const re = rc[this.exitDir];
+      if (activeRoadCount === 5) {
+        const nx = -re.dy, ny = re.dx;
+        const stop1 = re.stopDist - 26; 
+        const entryX = re.spawnX + re.dx * stop1;
+        const entryY = re.spawnY + re.dy * stop1;
+        pExit = { x: entryX - 2*nx*lo, y: entryY - 2*ny*lo, dx: -re.dx, dy: -re.dy };
+      } else {
+        pExit = {
+          north: {x: cx+lo, y: cy-hw, dx: 0, dy: -1},
+          south: {x: cx-lo, y: cy+hw, dx: 0, dy: 1},
+          east:  {x: cx+hw, y: cy+lo, dx: 1, dy: 0},
+          west:  {x: cx-hw, y: cy-lo, dx: -1, dy: 0},
+          northeast: {x: cx+hw*1.5*0.707, y: cy-hw*1.5*0.707, dx: 0.707, dy: -0.707}
+        }[this.exitDir];
+      }
+    }
+    
+    if (this.completedTurn) {
+      this.currentAngle = Math.atan2(pExit.dy, pExit.dx) + Math.PI/2;
+      return {x: pExit.x + pExit.dx * this.exitPos, y: pExit.y + pExit.dy * this.exitPos};
+    }
+    
+    if (this.turning && this.exitDir) {
+      const stop1 = r.stopDist - 26;
+      const nx = -r.dy, ny = r.dx;
+      const shift = -25; // Shift 25 pixels towards center line
+      const pEntry = {
+        x: r.spawnX + r.dx * stop1 + nx * shift,
+        y: r.spawnY + r.dy * stop1 + ny * shift
+      };
+      
+      const turnDist = this.turnTotalDist || (hw * 2.5);
+      const t = Math.min(1, Math.max(0, (this.pos - this.turnStartPos) / turnDist));
+      
+      if (activeRoadCount === 5) {
+        let a1 = Math.atan2(pEntry.y - cy, pEntry.x - cx);
+        let a2 = Math.atan2(pExit.y - cy, pExit.x - cx);
+        while (a2 <= a1) a2 += Math.PI * 2;
+        
+        if (!this.turnTotalDist) {
+          this.turnTotalDist = Math.max((a2 - a1) * (hw * 1.5), hw * 1.8);
+        }
+        
+        const A = a1 + t * (a2 - a1);
+        const R_start = Math.hypot(pEntry.x - cx, pEntry.y - cy);
+        const R_end = Math.hypot(pExit.x - cx, pExit.y - cy);
+        const R_mid = hw * 0.85; // Wider turn for 5-road map 
+        
+        const R = (1-t)*(1-t)*R_start + 2*(1-t)*t*R_mid + t*t*R_end;
+        const x = cx + R * Math.cos(A);
+        const y = cy + R * Math.sin(A);
+        
+        const dR_dt = 2*(t-1)*R_start + 2*(1-2*t)*R_mid + 2*t*R_end;
+        const dA_dt = a2 - a1;
+        const dx = dR_dt * Math.cos(A) - R * Math.sin(A) * dA_dt;
+        const dy = dR_dt * Math.sin(A) + R * Math.cos(A) * dA_dt;
+        
+        this.currentAngle = Math.atan2(dy, dx) + Math.PI/2;
+        return {x, y};
+      }
+      
+      const pCtrl = {x: cx, y: cy};
+      const x = (1-t)*(1-t)*pEntry.x + 2*(1-t)*t*pCtrl.x + t*t*pExit.x;
+      const y = (1-t)*(1-t)*pEntry.y + 2*(1-t)*t*pCtrl.y + t*t*pExit.y;
+      
+      const dx = 2*(1-t)*(pCtrl.x - pEntry.x) + 2*t*(pExit.x - pCtrl.x);
+      const dy = 2*(1-t)*(pCtrl.y - pEntry.y) + 2*t*(pExit.y - pCtrl.y);
+      this.currentAngle = Math.atan2(dy, dx) + Math.PI/2;
+      return {x, y};
+    }
+    
+    this.currentAngle = r.angle;
+    const nx = -r.dy, ny = r.dx;
+    const shift = -25; // Shift 25 pixels towards center line
+    return {
+      x: r.spawnX + r.dx * this.pos + nx * shift,
+      y: r.spawnY + r.dy * this.pos + ny * shift
+    };
+  }
+};
 
 function drawAmbulance(rc){
   if(!AMB.active)return;
-  const r=rc[AMB.dir];
-  const ax=r.spawnX+r.dx*AMB.pos, ay=r.spawnY+r.dy*AMB.pos;
+  const {x: ax, y: ay} = AMB.xy(rc);
   if(ax<-150||ax>canvas.width+150||ay<-150||ay>canvas.height+150)return;
 
   /* ─ Big pulsing halo ─ */
@@ -550,8 +958,18 @@ function drawAmbulance(rc){
 
   /* ─ Ground sweep light ─ */
   const lo=Math.sin(AMB.lph*12)>0;
-  ctx.save();ctx.translate(ax,ay);ctx.rotate(r.angle);
-  const w=40,h=80;
+  ctx.save();
+  ctx.translate(ax,ay);
+  ctx.rotate(AMB.currentAngle);
+  
+  // Pseudo-3D Drop Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetX = 5;
+  ctx.shadowOffsetY = 6;
+  
+  let w = VSPEC[AMB.type || 'ambulance'].wid || 40;
+  let h = VSPEC[AMB.type || 'ambulance'].len || 80;
   // forward headlight beam
   ctx.globalAlpha=0.14;
   const bm=ctx.createLinearGradient(0,-h/2-5,0,-h/2-55);
@@ -563,90 +981,22 @@ function drawAmbulance(rc){
   ctx.save();ctx.translate(4,7);ctx.globalAlpha=0.32;ctx.fillStyle='#000028';
   ctx.beginPath();ctx.ellipse(0,0,w*0.55,h*0.46,0,0,Math.PI*2);ctx.fill();ctx.restore();
 
-  /* ─ White body ─ */
-  const wg=ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
-  wg.addColorStop(0,'#ffffff');wg.addColorStop(0.5,'#fcfcfc');wg.addColorStop(1,'#eaeaea');
-  ctx.fillStyle=wg;ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,w*0.15);ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=1.2;ctx.stroke();
-
-  /* ─ Yellow Hood / Bonnet (Force Traveler Style) ─ */
-  ctx.fillStyle='#ffd000';
-  ctx.beginPath();
-  ctx.roundRect(-w/2+1, -h/2+1, w-2, 22, [6, 6, 0, 0]);
-  ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.stroke();
-
-  /* ─ Checkered Red/Yellow side stripes (Force Traveler style) ─ */
-  const cw=3.5, ch=7;
-  for(let i=0; i<6; i++) {
-    // left side checkers
-    ctx.fillStyle = i % 2 === 0 ? '#ffd000' : '#cc1133';
-    ctx.fillRect(-w/2, -18 + i*ch, cw, ch);
-    ctx.fillRect(-w/2, 24 + i*ch, cw, ch);
+  if (AMB.type === 'fireengine' && typeof imgFireEngine !== 'undefined' && imgFireEngine.src) {
+    ctx.drawImage(imgFireEngine, -w/2, -h/2, w, h);
+  } else if ((!AMB.type || AMB.type === 'ambulance') && typeof imgAmbulance !== 'undefined' && imgAmbulance.src) {
+    ctx.drawImage(imgAmbulance, -w/2, -h/2, w, h);
+  } else {
+    /* ─ White body fallback ─ */
+    const wg=ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
+    wg.addColorStop(0,'#ffffff');wg.addColorStop(0.5,'#fcfcfc');wg.addColorStop(1,'#eaeaea');
+    ctx.fillStyle=wg;ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,w*0.15);ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=1.2;ctx.stroke();
     
-    // right side checkers
-    ctx.fillStyle = i % 2 === 0 ? '#cc1133' : '#ffd000';
-    ctx.fillRect(w/2 - cw, -18 + i*ch, cw, ch);
-    ctx.fillRect(w/2 - cw, 24 + i*ch, cw, ch);
+    ctx.fillStyle='#0055cc';
+    ctx.beginPath(); ctx.arc(0, 12, 7, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(-4, 12); ctx.lineTo(4, 12); ctx.moveTo(0, 8); ctx.lineTo(0, 16); ctx.stroke();
   }
-
-  /* ─ Blue Star of Life / Medical Symbol ─ */
-  ctx.fillStyle='#0055cc';
-  ctx.beginPath(); ctx.arc(0, 12, 7, 0, Math.PI*2); ctx.fill();
-  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
-  // Draw simple white cross lines on top of blue circle
-  ctx.beginPath(); ctx.moveTo(-4, 12); ctx.lineTo(4, 12); ctx.moveTo(0, 8); ctx.lineTo(0, 16); ctx.stroke();
-
-  /* ─ AMBULANCE text on the yellow bonnet ─ */
-  ctx.save();
-  ctx.font=`bold ${Math.max(5,w*0.22)}px Impact,Arial,sans-serif`;
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillStyle='#cc0011';
-  ctx.save();ctx.scale(1,-1);ctx.fillText('AMBULANCE',0,-h*0.37);ctx.restore();
-  ctx.restore();
-
-  /* ─ Windshield (glass) ─ */
-  ctx.fillStyle='rgba(165,222,255,0.85)';ctx.beginPath();ctx.roundRect(-w/2+3.5,-h/2+14,w-7,h*0.14,2.5);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.30)';ctx.beginPath();ctx.roundRect(-w/2+5.5,-h/2+15.5,(w-11)*0.40,h*0.06,1.5);ctx.fill();
-
-  /* ─ Rear window ─ */
-  ctx.fillStyle='rgba(145,208,244,0.58)';ctx.beginPath();ctx.roundRect(-w/2+3.5,h/2-h*0.19,w-7,h*0.15,3.5);ctx.fill();
-
-  /* ─ 4 wheels ─ */
-  const wW=7.5,wH=12;
-  const wy1=-h/2+h*0.09,wy2=h/2-h*0.09-wH;
-  const wx1=-w/2-2.5,wx2=w/2-5;
-  ctx.fillStyle='#0d0d0d';
-  [[wx1,wy1],[wx2,wy1],[wx1,wy2],[wx2,wy2]].forEach(([tx,ty])=>{
-    ctx.beginPath();ctx.roundRect(tx,ty,wW,wH,2.5);ctx.fill();
-    ctx.fillStyle='#445';ctx.fillRect(tx+1,ty+1.5,wW-2,wH*0.42);ctx.fillStyle='#0d0d0d';
-  });
-
-  /* ─ EMERGENCY LIGHTBAR — blue flashing ─ */
-  ctx.fillStyle=lo?'#0f22ee':'#ff0808';
-  ctx.shadowBlur=28;ctx.shadowColor=lo?'#1122ff':'#ff0000';
-  ctx.fillRect(-w/2+2,-h/2-9,w/2-2,8);ctx.shadowBlur=0;
-  ctx.fillStyle=(!lo)?'#0f22ee':'#ff0808';
-  ctx.shadowBlur=28;ctx.shadowColor=(!lo)?'#1122ff':'#ff0000';
-  ctx.fillRect(1,-h/2-9,w/2-2,8);ctx.shadowBlur=0;
-  // lightbar housing
-  ctx.fillStyle='rgba(60,60,60,0.80)';ctx.beginPath();ctx.roundRect(-w/2+1,-h/2-10,w-2,10,2);ctx.fill();
-  ctx.strokeStyle='rgba(100,100,100,0.5)';ctx.lineWidth=0.8;ctx.stroke();
-
-  /* ─ Headlights ─ */
-  ctx.fillStyle='#ffffaa';ctx.shadowBlur=18;ctx.shadowColor='#ffff88';
-  ctx.beginPath();ctx.ellipse(-w/2+5,-h/2+2.5,5.5,3,0,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.ellipse( w/2-5,-h/2+2.5,5.5,3,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-
-  /* ─ Tail lights ─ */
-  ctx.fillStyle='#ff2244';ctx.shadowBlur=12;ctx.shadowColor='#ff2244';
-  ctx.beginPath();ctx.ellipse(-w/2+5,h/2-2.5,5,3,0,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.ellipse( w/2-5,h/2-2.5,5,3,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-
-  /* ─ Side lettering / badge ─ */
-  ctx.fillStyle='rgba(0,85,200,0.80)';
-  ctx.fillRect(-w/2, -5, cw, 10);
-  ctx.fillRect(w/2-cw, -5, cw, 10);
 
   ctx.restore(); // back to world space
 
@@ -684,15 +1034,15 @@ function drawPars(){
 
 /* ── Vehicle manager ────────────────────────────────────────── */
 const vehicles=[];
-const spT={north:0.8,east:0.2,south:1.6,west:1.2},spN={north:1.8,east:1.5,south:2.2,west:2.0};
+const spT={north:0.8,east:0.2,south:1.6,west:1.2},spN={north:1.0,east:0.8,south:1.2,west:1.0};
 function manageVehicles(dt,rc){
   vehicles.forEach(v=>v.update(dt,rc,vehicles));
   for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].done)vehicles.splice(i,1);
-  DIRS.forEach(dir=>{
+  activeDirs.forEach(dir=>{
     spT[dir]+=dt;
     if(spT[dir]>=spN[dir]){
-      spT[dir]=0;spN[dir]=1.0+Math.random()*2.4;
-      if(!vehicles.some(v=>v.dir===dir&&v.pos<110))vehicles.push(new Vehicle(dir));
+      spT[dir]=0;spN[dir]=0.4+Math.random()*1.4;
+      if(!vehicles.some(v=>v.dir===dir&&v.pos < (v.spec.len / 2 + 65)))vehicles.push(new Vehicle(dir));
     }
   });
 }
@@ -716,25 +1066,28 @@ function drawRoad(){
   const padding = 16; // offset from road kerb to grass edge
   
   ctx.fillStyle='#3b7a15'; // Lush green color of the grass blocks
-  // Top-Left block
-  ctx.beginPath();
-  ctx.roundRect(-20, -20, cx - hw - padding + 20, cy - hw - padding + 20, [0, 0, rGrass, 0]);
-  ctx.fill();
-  
-  // Top-Right block
-  ctx.beginPath();
-  ctx.roundRect(cx + hw + padding, -20, W - (cx + hw + padding) + 20, cy - hw - padding + 20, [0, 0, 0, rGrass]);
-  ctx.fill();
-  
-  // Bottom-Left block
-  ctx.beginPath();
-  ctx.roundRect(-20, cy + hw + padding, cx - hw - padding + 20, H - (cy + hw + padding) + 20, [0, rGrass, 0, 0]);
-  ctx.fill();
-  
-  // Bottom-Right block
-  ctx.beginPath();
-  ctx.roundRect(cx + hw + padding, cy + hw + padding, W - (cx + hw + padding) + 20, H - (cy + hw + padding) + 20, [rGrass, 0, 0, 0]);
-  ctx.fill();
+  if(activeRoadCount === 5 || activeRoadCount === 4){
+    // Top-Left block
+    ctx.beginPath(); ctx.roundRect(-20, -20, cx - hw - padding + 20, cy - hw - padding + 20, [0, 0, rGrass, 0]); ctx.fill();
+    // Top-Right block
+    ctx.beginPath(); ctx.roundRect(cx + hw + padding, -20, W - (cx + hw + padding) + 20, cy - hw - padding + 20, [0, 0, 0, rGrass]); ctx.fill();
+    // Bottom-Left block
+    ctx.beginPath(); ctx.roundRect(-20, cy + hw + padding, cx - hw - padding + 20, H - (cy + hw + padding) + 20, [0, rGrass, 0, 0]); ctx.fill();
+    // Bottom-Right block
+    ctx.beginPath(); ctx.roundRect(cx + hw + padding, cy + hw + padding, W - (cx + hw + padding) + 20, H - (cy + hw + padding) + 20, [rGrass, 0, 0, 0]); ctx.fill();
+  } else if(activeRoadCount === 3){
+    // Top-Left block
+    ctx.beginPath(); ctx.roundRect(-20, -20, cx - hw - padding + 20, cy - hw - padding + 20, [0, 0, rGrass, 0]); ctx.fill();
+    // Top-Right block
+    ctx.beginPath(); ctx.roundRect(cx + hw + padding, -20, W - (cx + hw + padding) + 20, cy - hw - padding + 20, [0, 0, 0, rGrass]); ctx.fill();
+    // Bottom solid horizontal grass block (no South road)
+    ctx.fillRect(-20, cy + hw + padding, W + 40, H - (cy + hw + padding) + 20);
+  } else {
+    // Top solid horizontal grass block (no North road)
+    ctx.fillRect(-20, -20, W + 40, cy - hw - padding + 20);
+    // Bottom solid horizontal grass block (no South road)
+    ctx.fillRect(-20, cy + hw + padding, W + 40, H - (cy + hw + padding) + 20);
+  }
 
   // Helper for drawing 3D tree clusters
   const drawTree = (x, y) => {
@@ -758,10 +1111,8 @@ function drawRoad(){
   // Helper for drawing office buildings (grey flat roof with details)
   const drawOffice = (x, y, w, h) => {
     ctx.fillStyle='#95a5a6'; ctx.fillRect(x-w/2, y-h/2, w, h);
-    ctx.strokeStyle='#7f8c8d'; ctx.lineWidth=1; ctx.strokeRect(x-w/2, y-h/2, w, h);
-    // Flat roof trim
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.5; ctx.strokeRect(x-w/2, y-h/2, w, h);
     ctx.fillStyle='#7f8c8d'; ctx.fillRect(x-w/2+2, y-h/2+2, w-4, 2);
-    // Roof air vents
     ctx.fillStyle='#34495e';
     ctx.fillRect(x-w/4, y-2, 6, 6);
     ctx.fillRect(x+w/8, y-4, 8, 8);
@@ -779,93 +1130,245 @@ function drawRoad(){
     ctx.beginPath(); ctx.arc(x-0.5, y-0.5, 1.6, Math.PI*0.8, Math.PI*1.8); ctx.fill(); // hair
   };
 
-  // 3. Populate Environmental Assets (from mod_int.png)
-  // Top-Left corner: Orange houses & Trees
+  // 3. Populate Environmental Assets (based on layout mode)
+  // Top assets (always drawn)
   drawHouse(35, 45, 34, 24, '#d35400', '#f39c12');
   drawHouse(85, 35, 42, 28, '#e67e22', '#f1c40f');
   drawTree(45, 95);
   drawTree(85, 90);
-
-  // Top-Right corner: Blue/Grey houses & Trees
+  
   drawHouse(cx + hw + 105, 35, 40, 26, '#2980b9', '#3498db');
   drawHouse(W - 45, 80, 44, 28, '#c0392b', '#e74c3c');
   drawTree(cx + hw + 60, 95);
   drawTree(W - 85, 100);
 
-  // Bottom-Left corner: Large Office & Trees
-  drawOffice(50, H - 75, 68, 56);
-  drawTree(115, H - 65);
-  drawTree(110, H - 95);
+  // Bottom assets (procedural layout)
+  if(activeRoadCount === 5 || activeRoadCount === 4){
+    drawOffice(50, H - 75, 68, 56);
+    drawTree(115, H - 65);
+    drawTree(110, H - 95);
+    
+    drawOffice(cx + hw + 105, H - 55, 78, 52);
+    drawTree(cx + hw + 50, H - 65);
+  } else {
+    // continuous office row along the bottom sidewalk block
+    drawOffice(50, H - 75, 68, 56);
+    drawOffice(cx, H - 75, 70, 56);
+    drawOffice(cx + hw + 105, H - 55, 78, 52);
+    drawTree(115, H - 65);
+    drawTree(cx - 70, H - 65);
+    drawTree(cx + hw + 50, H - 65);
+  }
 
-  // Bottom-Right corner: Office Blocks & Trees
-  drawOffice(cx + hw + 105, H - 55, 78, 52);
-  drawTree(cx + hw + 50, H - 65);
-
-  // Draw Sidewalk Pedestrians
+  // Draw Sidewalk Pedestrians depending on layout
   drawPedestrian(cx - hw - 8, cy - hw - 30, '#1abc9c');
-  drawPedestrian(cx - hw - 35, cy - hw - 8, '#9b59b6');
   drawPedestrian(cx + hw + 8, cy - hw - 40, '#e67e22');
-  drawPedestrian(cx + hw + 30, cy - hw - 10, '#34495e');
-  drawPedestrian(cx - hw - 40, cy + hw + 12, '#2ecc71');
-  drawPedestrian(cx - hw - 10, cy + hw + 35, '#c0392b');
-  drawPedestrian(cx + hw + 8, cy + hw + 25, '#9b59b6');
-  drawPedestrian(cx + hw + 35, cy + hw + 8, '#1abc9c');
+  if (activeRoadCount >= 3) {
+    drawPedestrian(cx - hw - 35, cy - hw - 8, '#9b59b6');
+    drawPedestrian(cx + hw + 30, cy - hw - 10, '#34495e');
+  }
+  if (activeRoadCount === 4) {
+    drawPedestrian(cx - hw - 40, cy + hw + 12, '#2ecc71');
+    drawPedestrian(cx - hw - 10, cy + hw + 35, '#c0392b');
+    drawPedestrian(cx + hw + 8, cy + hw + 25, '#9b59b6');
+    drawPedestrian(cx + hw + 35, cy + hw + 8, '#1abc9c');
+  } else {
+    drawPedestrian(cx - hw - 40, cy + hw + 20, '#2ecc71');
+    drawPedestrian(cx + hw + 35, cy + hw + 20, '#1abc9c');
+  }
 
   // 4. Draw Main Active Intersecting Roads (Dark grey asphalt from mod_int.png)
+  // 4. Draw Main Active Intersecting Roads (Dark grey asphalt from mod_int.png)
   ctx.fillStyle='#34495e'; // Unified asphalt road color
-  ctx.fillRect(0, cy-hw, W, hw*2);
-  ctx.fillRect(cx-hw, 0, hw*2, H);
+  
+  if (activeRoadCount === 5) {
+    const ringInner = hw * 0.8;
+    const ringOuter = hw * 3.0;
+    const angles = [-90, -18, 54, 126, 198];
+    
+    // Draw 5 radiating roads
+    angles.forEach(deg => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(deg * Math.PI / 180);
+      ctx.fillRect(0, -hw, canvas.width, hw * 2); // draw road outward
+      
+      // Kerbs for radiating roads
+      ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ringOuter, -hw); ctx.lineTo(canvas.width, -hw);
+      ctx.moveTo(ringOuter, hw); ctx.lineTo(canvas.width, hw);
+      ctx.stroke();
+      ctx.restore();
+    });
+    
+    // Draw the Circular Ring Road (Asphalt)
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringOuter, 0, Math.PI * 2);
+    ctx.fill(); 
+    
+    // Outer Ring Kerb
+    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringOuter, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw Splitter Islands (Pink) between the lanes
+    angles.forEach(deg => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(deg * Math.PI / 180);
+      
+      ctx.fillStyle = '#e29b9b'; // pinkish red like image
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ringOuter + 8, 0); 
+      ctx.lineTo(ringOuter + hw*1.2, -6);
+      ctx.lineTo(ringOuter + hw*1.2, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      ctx.restore();
+    });
+    
+    // Draw the Central Island (Grass)
+    ctx.fillStyle = '#3b7a15';
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringInner, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#f1c40f'; // yellow inner kerb
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Draw Dark inner circle (as seen in image)
+    ctx.fillStyle = '#1c1f1c';
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringInner * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw yellow center lines and zebra crossings for each road
+    angles.forEach(deg => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(deg * Math.PI / 180);
+      
+      // Yellow line
+      ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(ringOuter + hw*1.2, -1.5); ctx.lineTo(canvas.width, -1.5);
+      ctx.moveTo(ringOuter + hw*1.2, 1.5); ctx.lineTo(canvas.width, 1.5);
+      ctx.stroke();
+      
+      // Zebra crossing
+      ctx.fillStyle = '#ffffff';
+      const zx = ringOuter + 14;
+      for (let y = -hw + 4; y < hw - 2; y += 11) {
+        if (Math.abs(y) > 10) ctx.fillRect(zx, y, 12, 6); // gap for island
+      }
+      ctx.fillRect(zx - 6, -hw, 2, hw); // Stop line incoming
+      ctx.fillRect(zx + 14, 0, 2, hw);  // Stop line outgoing (optional)
+      
+      ctx.restore();
+    });
+    
+  } else {
+    // East-West road is always drawn
+    ctx.fillRect(0, cy-hw, W, hw*2);
+    // Center intersection is always drawn
+    ctx.fillRect(cx-hw, cy-hw, hw*2, hw*2);
+    
+    if(activeDirs.includes('north')){
+      ctx.fillRect(cx-hw, 0, hw*2, cy-hw);
+    }
+    if(activeDirs.includes('south')){
+      ctx.fillRect(cx-hw, cy+hw, hw*2, H - (cy+hw));
+    }
 
-  // Main Kerb lines (Thin black boundary lines where road meets sidewalk)
-  ctx.strokeStyle='#2c3e50'; ctx.lineWidth=1.5;
-  [[0,cy-hw,cx-hw,cy-hw],[cx+hw,cy-hw,W,cy-hw],[0,cy+hw,cx-hw,cy+hw],[cx+hw,cy+hw,W,cy+hw],
-   [cx-hw,0,cx-hw,cy-hw],[cx-hw,cy+hw,cx-hw,H],[cx+hw,0,cx+hw,cy-hw],[cx+hw,cy+hw,cx+hw,H]]
-  .forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
+    // Main Kerb lines
+    ctx.strokeStyle='#2c3e50'; ctx.lineWidth=1.5;
+    const kerbs = [];
+    if(activeRoadCount === 4) {
+      kerbs.push([0,cy-hw,cx-hw,cy-hw],[cx+hw,cy-hw,W,cy-hw],[0,cy+hw,cx-hw,cy+hw],[cx+hw,cy+hw,W,cy+hw]);
+      kerbs.push([cx-hw,0,cx-hw,cy-hw],[cx-hw,cy+hw,cx-hw,H],[cx+hw,0,cx+hw,cy-hw],[cx+hw,cy+hw,cx+hw,H]);
+    } else if(activeRoadCount === 3) {
+      kerbs.push([0,cy-hw,cx-hw,cy-hw],[cx+hw,cy-hw,W,cy-hw],[0,cy+hw,W,cy+hw]);
+      kerbs.push([cx-hw,0,cx-hw,cy-hw],[cx+hw,0,cx+hw,cy-hw]);
+    }
+    kerbs.forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
 
-  // 5. Draw Double Solid Yellow Centre Lines (from mod_int.png)
-  ctx.strokeStyle='#f1c40f'; ctx.lineWidth=1.2;
-  ctx.beginPath();
-  // North centre double line
-  ctx.moveTo(cx - 1.5, 0); ctx.lineTo(cx - 1.5, cy - hw);
-  ctx.moveTo(cx + 1.5, 0); ctx.lineTo(cx + 1.5, cy - hw);
-  // South centre double line
-  ctx.moveTo(cx - 1.5, cy + hw); ctx.lineTo(cx - 1.5, H);
-  ctx.moveTo(cx + 1.5, cy + hw); ctx.lineTo(cx + 1.5, H);
-  // West centre double line
-  ctx.moveTo(0, cy - 1.5); ctx.lineTo(cx - hw, cy - 1.5);
-  ctx.moveTo(0, cy + 1.5); ctx.lineTo(cx - hw, cy + 1.5);
-  // East centre double line
-  ctx.moveTo(cx + hw, cy - 1.5); ctx.lineTo(W, cy - 1.5);
-  ctx.moveTo(cx + hw, cy + 1.5); ctx.lineTo(W, cy + 1.5);
-  ctx.stroke();
+    // 5. Draw Double Solid Yellow Centre Lines
+    ctx.strokeStyle='#f1c40f'; ctx.lineWidth=1.2;
+    ctx.beginPath();
+    if(activeDirs.includes('north')){
+      ctx.moveTo(cx - 1.5, 0); ctx.lineTo(cx - 1.5, cy - hw);
+      ctx.moveTo(cx + 1.5, 0); ctx.lineTo(cx + 1.5, cy - hw);
+    }
+    if(activeDirs.includes('south')){
+      ctx.moveTo(cx - 1.5, cy + hw); ctx.lineTo(cx - 1.5, H);
+      ctx.moveTo(cx + 1.5, cy + hw); ctx.lineTo(cx + 1.5, H);
+    }
+    if(activeDirs.includes('west')){
+      ctx.moveTo(0, cy - 1.5); ctx.lineTo(cx - hw, cy - 1.5);
+      ctx.moveTo(0, cy + 1.5); ctx.lineTo(cx - hw, cy + 1.5);
+    }
+    if(activeDirs.includes('east')){
+      ctx.moveTo(cx + hw, cy - 1.5); ctx.lineTo(W, cy - 1.5);
+      ctx.moveTo(cx + hw, cy + 1.5); ctx.lineTo(W, cy + 1.5);
+    }
+    ctx.stroke();
 
-  // 6. Draw White Zebra Crossing stripes (crosswalks) & Stop Lines (from mod_int.png)
-  ctx.fillStyle = '#ffffff';
-  // North approach
-  for(let x = cx - hw + 4; x < cx + hw - 2; x += 11) { ctx.fillRect(x, cy - hw - 18, 6, 12); }
-  ctx.fillRect(cx - hw, cy - hw - 21, hw, 2); // Stop Line (White)
-  // South approach
-  for(let x = cx - hw + 4; x < cx + hw - 2; x += 11) { ctx.fillRect(x, cy + hw + 6, 6, 12); }
-  ctx.fillRect(cx, cy + hw + 19, hw, 2); // Stop Line (White)
-  // West approach
-  for(let y = cy - hw + 4; y < cy + hw - 2; y += 11) { ctx.fillRect(cx - hw - 18, y, 12, 6); }
-  ctx.fillRect(cx - hw - 21, cy, 2, hw); // Stop Line (White)
-  // East approach
-  for(let y = cy - hw + 4; y < cy + hw - 2; y += 11) { ctx.fillRect(cx + hw + 6, y, 12, 6); }
-  ctx.fillRect(cx + hw + 19, cy - hw, 2, hw); // Stop Line (White)
+    // 6. Draw White Zebra Crossing stripes & Stop Lines
+    ctx.fillStyle = '#ffffff';
+    if(activeDirs.includes('north')){
+      for(let x = cx - hw + 4; x < cx + hw - 2; x += 11) { ctx.fillRect(x, cy - hw - 18, 6, 12); }
+      ctx.fillRect(cx - hw, cy - hw - 21, hw, 2);
+    }
+    if(activeDirs.includes('south')){
+      for(let x = cx - hw + 4; x < cx + hw - 2; x += 11) { ctx.fillRect(x, cy + hw + 6, 6, 12); }
+      ctx.fillRect(cx, cy + hw + 19, hw, 2);
+    }
+    if(activeDirs.includes('west')){
+      for(let y = cy - hw + 4; y < cy + hw - 2; y += 11) { ctx.fillRect(cx - hw - 18, y, 12, 6); }
+      ctx.fillRect(cx - hw - 21, cy, 2, hw);
+    }
+    if(activeDirs.includes('east')){
+      for(let y = cy - hw + 4; y < cy + hw - 2; y += 11) { ctx.fillRect(cx + hw + 6, y, 12, 6); }
+      ctx.fillRect(cx + hw + 19, cy - hw, 2, hw);
+    }
+  }
 
   // Lane dividers (thin white dashes)
   ctx.setLineDash([8,6]); ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=0.8;
   ctx.beginPath();
-  ctx.moveTo(cx-hw*0.50, 0); ctx.lineTo(cx-hw*0.50, cy-hw);
-  ctx.moveTo(cx+hw*0.50, cy+hw); ctx.lineTo(cx+hw*0.50, H);
-  ctx.moveTo(0, cy+hw*0.50); ctx.lineTo(cx-hw, cy+hw*0.50);
-  ctx.moveTo(cx+hw, cy-hw*0.50); ctx.lineTo(W, cy-hw*0.50);
+  if(activeDirs.includes('north')){
+    ctx.moveTo(cx-hw*0.50, 0); ctx.lineTo(cx-hw*0.50, cy-hw);
+  }
+  if(activeDirs.includes('south')){
+    ctx.moveTo(cx+hw*0.50, cy+hw); ctx.lineTo(cx+hw*0.50, H);
+  }
+  if(activeDirs.includes('west')){
+    ctx.moveTo(0, cy+hw*0.50); ctx.lineTo(cx-hw, cy+hw*0.50);
+  }
+  if(activeDirs.includes('east')){
+    ctx.moveTo(cx+hw, cy-hw*0.50); ctx.lineTo(W, cy-hw*0.50);
+  }
   ctx.stroke();
   ctx.setLineDash([]);
+  
+  if(activeDirs.includes('northeast')) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-Math.PI/4);
+    ctx.setLineDash([8,6]); ctx.beginPath();
+    ctx.moveTo(hw, -hw*0.50); ctx.lineTo(Math.max(W,H), -hw*0.50);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // Green road glow indicators
-  DIRS.forEach(dir=>{
+  activeDirs.forEach(dir=>{
     if(signals[dir].state!=='green')return;
     const gp={north:{x:cx-hw*0.40,y:cy-hw*0.55},south:{x:cx+hw*0.40,y:cy+hw*0.55},
               east:{x:cx+hw*0.55,y:cy-hw*0.40},west:{x:cx-hw*0.55,y:cy+hw*0.40}}[dir];
@@ -884,21 +1387,34 @@ function drawArrows(cx,cy,hw){
     ctx.beginPath();ctx.moveTo(0,-s);ctx.lineTo(-s*0.5,s*0.26);ctx.lineTo(0,-s*0.22);ctx.lineTo(s*0.5,s*0.26);
     ctx.closePath();ctx.fill();ctx.restore();
   };
-  arw(cx-hw*0.40,cy-hw*0.52,0,1,14);arw(cx+hw*0.40,cy+hw*0.52,0,-1,14);
-  arw(cx+hw*0.52,cy-hw*0.40,-1,0,14);arw(cx-hw*0.52,cy+hw*0.40,1,0,14);
+  if(activeDirs.includes('north')) arw(cx-hw*0.40,cy-hw*0.52,0,1,14);
+  if(activeDirs.includes('south')) arw(cx+hw*0.40,cy+hw*0.52,0,-1,14);
+  if(activeDirs.includes('east'))  arw(cx+hw*0.52,cy-hw*0.40,-1,0,14);
+  if(activeDirs.includes('west'))  arw(cx-hw*0.52,cy+hw*0.40,1,0,14);
+  if(activeDirs.includes('northeast')) arw(cx+hw*0.52*0.707,cy-hw*0.52*0.707,-0.707,0.707,14);
 }
 function drawLabels(cx,cy,hw){
   ctx.font='bold 11px Orbitron,monospace';ctx.textAlign='center';
   ctx.fillStyle='rgba(127,168,204,0.40)';
-  ctx.fillText('NORTH',cx,cy-hw-45);ctx.fillText('SOUTH',cx,cy+hw+56);
-  ctx.fillText('EAST',cx+hw+56,cy+5);ctx.fillText('WEST',cx-hw-56,cy+5);
+  if(activeDirs.includes('north')) ctx.fillText('NORTH',cx,cy-hw-45);
+  if(activeDirs.includes('south')) ctx.fillText('SOUTH',cx,cy+hw+56);
+  if(activeDirs.includes('east'))  ctx.fillText('EAST',cx+hw+56,cy+5);
+  if(activeDirs.includes('west'))  ctx.fillText('WEST',cx-hw-56,cy+5);
+  if(activeDirs.includes('northeast')) {
+    ctx.save();
+    ctx.translate(cx+hw*1.5*0.707, cy-hw*1.5*0.707);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText('N.EAST',0,-30);
+    ctx.restore();
+  }
 }
 
 function drawTLights(cx,cy,hw){
   const R=hw*1.18;
   const corners={north:{px:cx+R,py:cy-R,ox:-28,oy:0},east:{px:cx+R,py:cy+R,ox:0,oy:-28},
-                 south:{px:cx-R,py:cy+R,ox:28,oy:0},west:{px:cx-R,py:cy-R,ox:0,oy:28}};
-  DIRS.forEach(dir=>{
+                 south:{px:cx-R,py:cy+R,ox:28,oy:0},west:{px:cx-R,py:cy-R,ox:0,oy:28},
+                 northeast:{px:cx+hw*0.5,py:cy-R*1.3,ox:-20,oy:0}};
+  activeDirs.forEach(dir=>{
     const{px,py,ox,oy}=corners[dir],sig=signals[dir].state;
     const bw=23,bh=64,bx=px+ox-bw/2,by=py+oy-bh/2;
     // pole
@@ -941,8 +1457,7 @@ function drawTLights(cx,cy,hw){
 let scanA=0;
 function drawScan(rc){
   if(detectionProgress<=0)return;
-  const r=rc[AMB.dir];
-  const ax=r.spawnX+r.dx*AMB.pos,ay=r.spawnY+r.dy*AMB.pos;
+  const {x: ax, y: ay} = AMB.xy(rc);
   if(ax<-130||ax>canvas.width+130||ay<-130||ay>canvas.height+130)return;
   const al=Math.min(1,detectionProgress*2.4);
   ctx.save();ctx.globalAlpha=al;
@@ -1010,22 +1525,19 @@ function tickCycle(dt){
   }
   
   // Update state and timers dynamically based on active road
-  const activeRoad=CYCLE[cycleIdx][0];
-  const nextRoad=CYCLE[(cycleIdx+1)%CYCLE.length][0];
-  const thirdRoad=CYCLE[(cycleIdx+2)%CYCLE.length][0];
-  const fourthRoad=CYCLE[(cycleIdx+3)%CYCLE.length][0];
-  
-  signals[activeRoad].state='green';
-  signals[activeRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT));
-  
-  signals[nextRoad].state='yellow';
-  signals[nextRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT));
-  
-  signals[thirdRoad].state='red';
-  signals[thirdRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT + 30));
-  
-  signals[fourthRoad].state='red';
-  signals[fourthRoad].timer=Math.max(0,Math.ceil(greenDuration - cycleT + 60));
+  for (let i = 0; i < CYCLE.length; i++) {
+    const road = CYCLE[(cycleIdx + i) % CYCLE.length][0];
+    if (i === 0) {
+      signals[road].state = 'green';
+      signals[road].timer = Math.max(0, Math.ceil(greenDuration - cycleT));
+    } else if (i === 1) {
+      signals[road].state = 'yellow';
+      signals[road].timer = Math.max(0, Math.ceil(greenDuration - cycleT));
+    } else {
+      signals[road].state = 'red';
+      signals[road].timer = Math.max(0, Math.ceil(greenDuration - cycleT + (i - 1) * 30));
+    }
+  }
   
   // Trigger DOM updates
   if(Math.floor(cycleT*10)%2===0){
@@ -1041,18 +1553,100 @@ function tickAmb(dt){
   switch(phase){
     case 'detecting':
       detectionProgress=Math.min(1,ambPhaseTimer/2.5);
-      AMB.spd=32;
-      AMB.pos+=AMB.spd*dt;
+      const aheadDetect = vehicles.filter(v => v.dir === AMB.dir && !v.completedTurn && v.pos > AMB.pos && (v.turning || !v.lph || v.lph < 20))
+                                  .sort((a,b)=>a.pos-b.pos)[0];
+      let desiredSpd = 32;
+      const ambLenDetect = VSPEC[AMB.type || 'ambulance'].len;
+      if (aheadDetect) {
+        const gap = aheadDetect.pos - aheadDetect.spec.len/2 - (AMB.pos + ambLenDetect/2);
+        const safe = 50; // slow speed, smaller safe gap
+        if(gap < safe && gap > 0) desiredSpd = Math.min(desiredSpd, aheadDetect.spd * (gap/safe));
+        else if (gap <= 0) desiredSpd = 0;
+      }
+      AMB.spd = AMB.spd < desiredSpd ? Math.min(desiredSpd, AMB.spd + 150*dt) : Math.max(desiredSpd, AMB.spd - 160*dt);
+      
+      const stopLineDetect = r.stopDist - 26;
+      AMB.pos = Math.min(AMB.pos + AMB.spd*dt, stopLineDetect);
+      if (aheadDetect) {
+        const minPos = aheadDetect.pos - aheadDetect.spec.len/2 - ambLenDetect/2 - 2;
+        if (AMB.pos > minPos) {
+          AMB.pos = minPos;
+          AMB.spd = aheadDetect.spd;
+        }
+      }
+      
       updateSensorDetection(detectionProgress);
       signals[AMB.dir].timer = Math.max(15, Math.ceil(20 - ambPhaseTimer));
       if(detectionProgress>=1){phase='priority';ambPhaseTimer=0;activatePriority();}
       break;
     case 'priority':
-      AMB.spd=Math.min(150,AMB.spd+82*dt);
-      AMB.pos+=AMB.spd*dt;
+      const ahead = vehicles.filter(v => v.dir === AMB.dir && !v.completedTurn && v.pos > AMB.pos && (v.turning || !v.lph || v.lph < 20))
+                            .sort((a,b)=>a.pos-b.pos)[0];
+      let desired = 250;
+      const ambLen = VSPEC[AMB.type || 'ambulance'].len;
+      if (ahead) {
+        const gap = ahead.pos - ahead.spec.len/2 - (AMB.pos + ambLen/2);
+        const safe = 90 * 1.5 + 10;
+        if(gap < safe && gap > 0) desired = Math.min(desired, ahead.spd * (gap/safe));
+        else if (gap <= 0) desired = 0;
+      }
+      AMB.spd = AMB.spd < desired ? Math.min(desired, AMB.spd + 150*dt) : Math.max(desired, AMB.spd - 160*dt);
+      
+      if(AMB.completedTurn) {
+        // Exit lane collision avoidance
+        const exitAhead = vehicles.filter(v => v.completedTurn && v.exitDir === AMB.exitDir && v.exitPos > AMB.exitPos)
+                                  .sort((a,b)=>a.exitPos-b.exitPos)[0];
+        let exitDesired = 250;
+        if (exitAhead) {
+          const gap = exitAhead.exitPos - exitAhead.spec.len/2 - (AMB.exitPos + ambLen/2);
+          const safe = 90 * 1.5 + 10;
+          if(gap < safe && gap > 0) exitDesired = Math.min(exitDesired, exitAhead.spd * (gap/safe));
+          else if (gap <= 0) exitDesired = 0;
+        }
+        AMB.spd = AMB.spd < exitDesired ? Math.min(exitDesired, AMB.spd + 150*dt) : Math.max(exitDesired, AMB.spd - 160*dt);
+        
+        AMB.exitPos += AMB.spd * dt;
+        
+        if (exitAhead) {
+          const minExitPos = exitAhead.exitPos - exitAhead.spec.len/2 - ambLen/2 - 2;
+          if (AMB.exitPos > minExitPos) {
+            AMB.exitPos = minExitPos;
+            AMB.spd = exitAhead.spd;
+          }
+        }
+        
+        if(AMB.exitPos >= rc[AMB.exitDir].exitDist) {
+          AMB.active=false;phase='resuming';ambPhaseTimer=0;
+          document.getElementById('detectionOverlay').style.display='none';
+          if(typeof resetSensorUI === 'function') resetSensorUI();
+          addLog(`🚑 ${AMB.type === 'fireengine' ? 'Fire Engine' : 'Ambulance'} cleared intersection. Initiating 15s green extension...`,'info');
+        }
+      } else {
+        AMB.pos += AMB.spd * dt;
+        if (ahead) {
+          const minPos = ahead.pos - ahead.spec.len/2 - ambLen/2 - 2;
+          if (AMB.pos > minPos) {
+            AMB.pos = minPos;
+            AMB.spd = ahead.spd;
+          }
+        }
+        const stopLine = r.stopDist - 26;
+        if(AMB.pos >= stopLine && !AMB.turning) {
+          AMB.turning = true;
+          AMB.turnStartPos = stopLine;
+        }
+        if(AMB.turning) {
+          const hw = Math.min(canvas.width,canvas.height)*0.09;
+          const turnDist = AMB.turnTotalDist || (hw * 2.5);
+          if(AMB.pos >= AMB.turnStartPos + turnDist) {
+            AMB.completedTurn = true;
+            AMB.exitPos = 0;
+          }
+        }
+      }
+      
       detectionProgress=Math.max(0,detectionProgress-dt*0.8);
       signals[AMB.dir].timer = Math.max(15, Math.ceil(17.5 - ambPhaseTimer));
-      if(AMB.pos>=r.exitDist){AMB.active=false;phase='resuming';ambPhaseTimer=0;addLog('🚑 Ambulance cleared intersection. Initiating 15s green extension...','info');}
       break;
     case 'resuming':
       const remaining = 15 - ambPhaseTimer;
@@ -1077,13 +1671,40 @@ function tickAmb(dt){
 }
 
 /* ── Controls ────────────────────────────────────────────── */
-function triggerAmbulance(){
+function triggerAmbulance(forceDir = null, vType = 'ambulance'){
   if(phase!=='normal')return;
   document.getElementById('btnAmbulance').disabled=true;
+  AMB.type = vType;
   
-  const reds=DIRS.filter(d=>signals[d].state==='red');
-  AMB.dir=reds[Math.floor(Math.random()*reds.length)]||'south';
-  AMB.pos=120;AMB.active=true;AMB.spd=32;
+  if (forceDir && activeDirs.includes(forceDir)) {
+      AMB.dir = forceDir;
+  } else {
+      let chosenDir = activeDirs[0];
+      let maxCars = -1;
+      activeDirs.forEach(d => {
+        if (signals[d].state === 'red') {
+          const numCars = vehicles.filter(v => v.dir === d).length;
+          if (numCars > maxCars) {
+            maxCars = numCars;
+            chosenDir = d;
+          }
+        }
+      });
+      AMB.dir = chosenDir;
+  }
+  
+  const possibleExits=activeDirs.filter(d=>d!==AMB.dir);
+  AMB.exitDir=possibleExits[Math.floor(Math.random()*possibleExits.length)];
+  AMB.turning = false;
+  AMB.completedTurn = false;
+  AMB.turnTotalDist = 0;
+  AMB.exitPos = 0;
+  
+  const rc = roadCfg();
+  const r = rc[AMB.dir];
+  AMB.pos = Math.max(0, r.stopDist - 400); // Dynamic spawn further back
+  AMB.active=true;
+  AMB.spd=32;
   
   // PREEMPTION: Instantly switch signals!
   const preemptedRoad = CYCLE[cycleIdx][0];
@@ -1105,7 +1726,8 @@ function triggerAmbulance(){
   setPhaseUI('detecting');updateTimelineUI(1);
   document.getElementById('detectionOverlay').style.display='block';
   
-  addLog(`🚑 Ambulance detected → ${AMB.dir.toUpperCase()} road`,'warning');
+  const vName = AMB.type === 'fireengine' ? 'Fire Engine' : 'Ambulance';
+  addLog(`🚑 ${vName} detected → ${AMB.dir.toUpperCase()} road`,'warning');
   addLog('🔴 All other roads switched to RED immediately.','danger');
   addLog(`🟢 ${AMB.dir.toUpperCase()} road switched to GREEN.`, 'success');
   addLog('🔍 AI multi-sensor detection started...','info');
@@ -1146,7 +1768,7 @@ function updateSpeed(v){simSpeed=parseFloat(v);document.getElementById('speedLab
 /* ── UI ──────────────────────────────────────────────────── */
 function updateSigUI(){
   DIRS.forEach(dir=>{
-    const d=dir[0],s=signals[dir].state;
+    const d=dir==='northeast'?'ne':dir[0],s=signals[dir].state;
     document.getElementById(`${d}Red`).className='light red'+(s==='red'?' active':'');
     document.getElementById(`${d}Yellow`).className='light yellow'+(s==='yellow'?' active':'');
     document.getElementById(`${d}Green`).className='light green'+(s==='green'?' active':'');
@@ -1162,11 +1784,12 @@ function highlightPriority(){
   });
 }
 function updateTimers(){
-  DIRS.forEach(dir=>{const d=dir[0],t=signals[dir].timer;document.getElementById(`${d}Timer`).textContent=t>0?t+'s':'—';});
+  DIRS.forEach(dir=>{const d=dir==='northeast'?'ne':dir[0],t=signals[dir].timer;document.getElementById(`${d}Timer`).textContent=t>0?t+'s':'—';});
   document.getElementById('statCars').textContent=vehicles.filter(v=>v.spd<1).length;
 }
 function setPhaseUI(p){
-  const lbl={normal:'Normal Operation',detecting:'Ambulance Detected',priority:'Priority GREEN Active',resuming:'Resuming Normal Signals'};
+  const detectingStr = (typeof AMB !== 'undefined' && AMB.type === 'fireengine') ? 'Fire Engine Detected' : 'Ambulance Detected';
+  const lbl={normal:'Normal Operation',detecting:detectingStr,priority:'Priority GREEN Active',resuming:'Resuming Normal Signals'};
   const clr={normal:'#00ff88',detecting:'#ffd700',priority:'#ff3355',resuming:'#00d4ff'};
   document.getElementById('phaseLabel').textContent=lbl[p]||p;
   document.getElementById('phaseDot').style.background=clr[p]||'#00ff88';
@@ -1812,6 +2435,73 @@ function toggleNeatCoordination() {
     
     addLog('🔴 NEAT Green Wave coordination disabled.', 'warning');
   }
+}
+
+/* ── Junction Switcher ───────────────────────────────────── */
+function changeJunctionMode(roads) {
+  activeRoadCount = roads;
+  [3, 4, 5].forEach(r => {
+    const btn = document.getElementById('btnJunc' + r);
+    if (btn) {
+      if (r === roads) {
+        btn.style.background = 'var(--accent)';
+        btn.style.color = '#0a192f';
+      } else {
+        btn.style.background = 'transparent';
+        btn.style.color = '#8892b0';
+      }
+    }
+  });
+  setJunctionMode(roads);
+}
+
+function setJunctionMode(roads) {
+  if (roads === 5) {
+    activeDirs = ['north', 'east', 'south', 'west', 'northeast'];
+    CYCLE[0] = ['north', 30];
+    CYCLE[1] = ['east', 30];
+    CYCLE[2] = ['south', 30];
+    CYCLE[3] = ['west', 30];
+    CYCLE[4] = ['northeast', 30];
+    CYCLE.length = 5;
+  } else if (roads === 4) {
+    activeDirs = ['north', 'east', 'south', 'west'];
+    CYCLE[0] = ['north', 30];
+    CYCLE[1] = ['east', 30];
+    CYCLE[2] = ['south', 30];
+    CYCLE[3] = ['west', 30];
+    CYCLE.length = 4;
+  } else {
+    activeDirs = ['north', 'east', 'west'];
+    CYCLE[0] = ['north', 30];
+    CYCLE[1] = ['east', 30];
+    CYCLE[2] = ['west', 30];
+    CYCLE.length = 3;
+  }
+  
+  cycleIdx = 0;
+  cycleT = 0;
+  yellowPending = false;
+  
+  vehicles.length = 0; // Clear vehicles to prevent collisions during layout transition!
+  
+  DIRS.forEach(d => {
+    const capitalized = d[0].toUpperCase() + d.slice(1);
+    const card = document.getElementById('sig' + capitalized);
+    if (card) {
+      card.style.display = activeDirs.includes(d) ? 'block' : 'none';
+    }
+  });
+  
+  DIRS.forEach(d => {
+    if (!activeDirs.includes(d)) {
+      signals[d].state = 'red';
+      signals[d].timer = 0;
+    }
+  });
+  
+  updateSigUI();
+  addLog(`🛣️ Intersection layout switched to ${roads}-Way Mode!`, 'success');
 }
 
 /* ── Init ─────────────────────────────────────────────────── */
