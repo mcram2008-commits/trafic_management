@@ -1577,7 +1577,6 @@ function tickAmb(dt){
       }
       
       updateSensorDetection(detectionProgress);
-      signals[AMB.dir].timer = Math.max(15, Math.ceil(20 - ambPhaseTimer));
       if(detectionProgress>=1){phase='priority';ambPhaseTimer=0;activatePriority();}
       break;
     case 'priority':
@@ -1648,28 +1647,25 @@ function tickAmb(dt){
       }
       
       detectionProgress=Math.max(0,detectionProgress-dt*0.8);
-      signals[AMB.dir].timer = Math.max(15, Math.ceil(17.5 - ambPhaseTimer));
       break;
     case 'resuming':
-      const remaining = 15 - ambPhaseTimer;
-      signals[AMB.dir].timer = Math.max(0, Math.ceil(remaining));
-      
-      // Update UI displays
-      updateTimers();
-      
-      if(remaining<=0){
-        phase='normal';detectionProgress=0;setPhaseUI('normal');updateTimelineUI(0);
-        addLog('✅ Green extension completed. Resuming normal cycle.','success');
-        document.getElementById('detectionOverlay').style.display='none';
-        document.getElementById('btnAmbulance').disabled=false;
-        resetSensorUI();
-        DIRS.forEach(d=>{const c=d[0].toUpperCase()+d.slice(1);document.getElementById(`sig${c}`).classList.remove('priority','danger-card');});
-        resumeNormal();
-      }
       break;
   }
-  const preemptedRoad = CYCLE[cycleIdx][0];
-  signals[preemptedRoad].timer = signals[AMB.dir].timer;
+// STRICT 15-second emergency phase enforcer
+  const remaining = 15 - ambPhaseTimer;
+  DIRS.forEach(d => signals[d].timer = Math.max(0, Math.ceil(remaining)));
+  if(Math.floor(ambPhaseTimer*10)%2===0) { updateSigUI(); updateTimers(); }
+  if(remaining <= 0 && phase !== 'normal'){
+     phase='normal';
+     detectionProgress=0;
+     setPhaseUI('normal');
+     updateTimelineUI(0);
+     document.getElementById('detectionOverlay').style.display='none';
+     document.getElementById('btnAmbulance').disabled=false;
+     if(typeof resetSensorUI === 'function') resetSensorUI();
+     DIRS.forEach(d=>{const c=d[0].toUpperCase()+d.slice(1);document.getElementById(`sig${c}`).classList.remove('priority','danger-card');});
+     resumeNormal();
+  }
 }
 
 /* ── Controls ────────────────────────────────────────────── */
@@ -1714,10 +1710,7 @@ function triggerAmbulance(forceDir = null, vType = 'ambulance'){
   DIRS.forEach(d=>{
     if(d === AMB.dir) {
       signals[d].state='green';
-      signals[d].timer=30;
-    } else if(d === preemptedRoad) {
-      signals[d].state='yellow';
-      signals[d].timer=30;
+      signals[d].timer=15;
     } else {
       signals[d].state='red';
       signals[d].timer=0;
@@ -1730,7 +1723,7 @@ function triggerAmbulance(forceDir = null, vType = 'ambulance'){
   document.getElementById('detectionOverlay').style.display='block';
   
   const vName = AMB.type === 'fireengine' ? 'Fire Engine' : 'Ambulance';
-  addLog(`🚑 ${vName} detected → ${AMB.dir.toUpperCase()} road`,'warning');
+  addLog(`🚑 Emergency detected → ${AMB.dir.toUpperCase()} road`,'warning');
   addLog('🔴 All other roads switched to RED immediately.','danger');
   addLog(`🟢 ${AMB.dir.toUpperCase()} road switched to GREEN.`, 'success');
   addLog('🔍 AI multi-sensor detection started...','info');
@@ -1746,9 +1739,13 @@ function activatePriority(){
 }
 function resumeNormal(){
   DIRS.forEach(d=>signals[d].state='red');
-  const nd=CYCLE[cycleIdx][0];signals[nd].state='green';cycleT=0;yellowPending=false;
+  const nd=CYCLE[cycleIdx][0];
+  signals[nd].state='green';
+  CYCLE[cycleIdx][1] = 30; // Force exactly 30 seconds!
+  cycleT=0;
+  yellowPending=false;
   updateSigUI();setPhaseUI('normal');updateTimelineUI(0);
-  addLog(`🔄 Resume → ${nd.toUpperCase()} GREEN`,'info');
+  addLog(`🔄 Resume → ${nd.toUpperCase()} GREEN for 30s`,'info');
 }
 function resetSimulation(){
   phase='normal';AMB.active=false;AMB.pos=0;AMB.spd=0;
