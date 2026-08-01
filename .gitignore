@@ -1,0 +1,15 @@
+node_modules/
+.env
+database.db
+*.log
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Temporary search logs and assets
+grep_*.txt
+tmp_*.png
+*.bak
+node_portable/
+node_portable.zip
+node_installer.msi

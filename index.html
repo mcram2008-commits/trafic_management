@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Ambulance Priority Traffic Management System</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">🚑</span>
+        <div class="logo-text">
+          <span class="logo-title">APTMS</span>
+          <span class="logo-sub">AI Ambulance Priority Traffic Management System</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="phase-indicator" id="phaseIndicator">
+        <div class="phase-dot" id="phaseDot"></div>
+        <span id="phaseLabel">Normal Operation</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-doc" id="btnDocs" onclick="openDocsModal()" style="padding: 6px 12px; height: 32px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); color: var(--accent); font-size: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: var(--font-head); letter-spacing: 0.5px; margin-right: 8px;">
+        <span>📖</span> SYSTEM DOCS
+      </button>
+      <div class="header-stat">
+        <span class="stat-val" id="uptime">99.8%</span>
+        <span class="stat-lbl">Uptime</span>
+      </div>
+      <div class="header-stat">
+        <span class="stat-val" id="responseTime">—</span>
+        <span class="stat-lbl">Response (ms)</span>
+      </div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Left Panel: AI Sensors -->
+    <aside class="panel panel-left">
+      <h3 class="panel-title"><span class="panel-icon">🤖</span> AI Detection Layer</h3>
+
+      <div class="sensor-card" id="sensorCamera">
+        <div class="sensor-header">
+          <span class="sensor-icon">📷</span>
+          <span class="sensor-name">AI Camera (YOLO v8)</span>
+          <span class="sensor-status idle" id="camStatus">IDLE</span>
+        </div>
+        <!-- Live Video Feed Integration mapping real-time simulation viewport (YOLOv8 classes) -->
+        <div class="sensor-video-container" id="sensorCamVideoContainer" style="margin-bottom: 8px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(0, 212, 255, 0.2); position: relative; background: #000; aspect-ratio: 16/9;">
+          <canvas id="sensorCamVideo" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.9) contrast(1.1) sepia(0.2) hue-rotate(90deg) saturate(1.4); display: block; background: #040c1a;"></canvas>
+          <canvas id="sensorCamVideoCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6;"></canvas>
+          <div style="position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.6); color: #00ff88; font-family: monospace; font-size: 8px; padding: 2px 4px; border-radius: 2px; border: 1px solid rgba(0, 255, 136, 0.4); pointer-events: none; letter-spacing: 0.5px; z-index: 10;">LIVE FEED (YOLOv8 - SEKILAB)</div>
+          <div class="scanner-line" style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(180deg, transparent, #00ff88, transparent); opacity: 0.5; pointer-events: none; animation: scanline 3s linear infinite; z-index: 5;"></div>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="camBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="camConf">Confidence: 0%</span>
+      </div>
+
+      <div class="sensor-card" id="sensorRFID">
+        <div class="sensor-header">
+          <span class="sensor-icon">📡</span>
+          <span class="sensor-name">RFID Reader (UHF)</span>
+          <span class="sensor-status idle" id="rfidStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="rfidBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="rfidConf">Confidence: 0%</span>
+      </div>
+
+      <div class="sensor-card" id="sensorGPS">
+        <div class="sensor-header">
+          <span class="sensor-icon">🛰️</span>
+          <span class="sensor-name">GPS Tracker</span>
+          <span class="sensor-status idle" id="gpsStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="gpsBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="gpsConf">Confidence: 0%</span>
+      </div>
+
+      <div class="sensor-card" id="sensorSound">
+        <div class="sensor-header">
+          <span class="sensor-icon">🔊</span>
+          <span class="sensor-name">Siren Detector (CNN)</span>
+          <span class="sensor-status idle" id="soundStatus">IDLE</span>
+        </div>
+        <div class="sensor-bar-wrap">
+          <div class="sensor-bar" id="soundBar" style="width:0%"></div>
+        </div>
+        <span class="sensor-conf" id="soundConf">Confidence: 0%</span>
+      </div>
+
+      <div class="fusion-box" id="fusionBox">
+        <div class="fusion-title">🧠 Sensor Fusion Score</div>
+        <div class="fusion-ring-wrap">
+          <svg class="fusion-ring" viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52" />
+            <circle class="ring-fill" id="fusionRing" cx="60" cy="60" r="52"
+              stroke-dasharray="327" stroke-dashoffset="327" />
+          </svg>
+          <div class="fusion-score" id="fusionScore">0%</div>
+        </div>
+        <div class="fusion-verdict" id="fusionVerdict">Monitoring...</div>
+      </div>
+
+      <!-- Environmental Controls Card -->
+      <div class="sensor-card" id="weatherControlCard" style="margin-top: 10px; border-color: rgba(251, 191, 36, 0.4); background: rgba(20, 15, 10, 0.45);">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">🌤️</span>
+            <span class="sensor-name" style="color: #fbbf24; font-weight: bold; letter-spacing: 0.5px;">Environmental Controls</span>
+          </div>
+          <span class="sensor-status active" id="weatherStatusText" style="background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3); font-size: 8px; padding: 0 4px; display: flex; align-items: center; height: 16px;">CLEAR</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;">
+          <button class="weather-btn active" id="btnWeatherClear" onclick="changeWeather('clear')" style="background: #fbbf24; color: #0a192f; border: 1px solid #fbbf24; border-radius: 4px; padding: 4px; font-size: 9px; cursor: pointer; font-family: monospace; transition: all 0.3s ease;">☀️ Clear</button>
+          <button class="weather-btn" id="btnWeatherRain" onclick="changeWeather('rain')" style="background: transparent; color: #8892b0; border: 1px solid rgba(251,191,36,0.2); border-radius: 4px; padding: 4px; font-size: 9px; cursor: pointer; font-family: monospace; transition: all 0.3s ease;">🌧️ Rain</button>
+          <button class="weather-btn" id="btnWeatherFog" onclick="changeWeather('fog')" style="background: transparent; color: #8892b0; border: 1px solid rgba(251,191,36,0.2); border-radius: 4px; padding: 4px; font-size: 9px; cursor: pointer; font-family: monospace; transition: all 0.3s ease;">🌫️ Fog</button>
+          <button class="weather-btn" id="btnWeatherNight" onclick="changeWeather('night')" style="background: transparent; color: #8892b0; border: 1px solid rgba(251,191,36,0.2); border-radius: 4px; padding: 4px; font-size: 9px; cursor: pointer; font-family: monospace; transition: all 0.3s ease;">🌙 Night</button>
+        </div>
+        <div style="font-size: 8px; color: var(--text3); margin-top: 6px; font-family: monospace; line-height: 1.3;">
+          <div>⚠️ Braking Gap Coefficient: <span id="lblWeatherBraking" style="color: #fbbf24; font-weight: bold;">1.0x</span></div>
+          <div>📷 YOLO Detection Precision: <span id="lblWeatherYolo" style="color: #00ff88; font-weight: bold;">98.7%</span></div>
+        </div>
+      </div>
+
+      <!-- AI Training monitor -->
+      <div class="sensor-card" id="aiTrainingCard" style="margin-top: 10px;">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">🧠</span>
+            <span class="sensor-name">AI Training Monitor</span>
+          </div>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <button id="btnTrainMode" onclick="toggleTrainingMode()" style="background: rgba(0, 212, 255, 0.12); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.3); font-size: 8px; font-family: monospace; border-radius: 3px; cursor: pointer; padding: 2px 5px; height: 16px; display: flex; align-items: center;">TRAFFIC</button>
+            <span class="sensor-status locked" id="trainStatus" style="background: #00ff8820; color: #00ff88; border-color: #00ff8840; height: 16px; padding: 0 4px; display: flex; align-items: center; font-size: 9px;">MONITOR</span>
+          </div>
+        </div>
+        <div style="text-align: center; margin: 8px 0; background: #060e18; border-radius: 6px; padding: 4px; border: 1px solid #1a3a5c; position: relative; overflow: hidden; height: 94px; display: flex; align-items: center; justify-content: center;">
+          <canvas id="trainingCanvas" width="220" height="84" style="background: #040810; border-radius: 4px;"></canvas>
+        </div>
+        <div class="sensor-bar-wrap" style="height: 6px; background: #1a3a5c30;">
+          <div class="sensor-bar" id="trainBar" style="width:100%; background: var(--accent);"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text2); margin-top: 5px;">
+          <span id="trainEpoch">Epoch: 150/150</span>
+          <span id="trainClass">Class: Ambulance</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text3); margin-top: 2px;">
+          <span id="trainLoss">Loss: 0.009</span>
+          <span id="trainAngles">Angles: 0°, 90°, 180°, 270°</span>
+        </div>
+        <button class="btn btn-secondary" id="btnRetrain" onclick="startAITraining()" style="width: 100%; height: 26px; padding: 0; font-size: 10px; margin-top: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #1a3a5c30; font-family: var(--font-head); letter-spacing: 0.5px;">
+          <span>⚙️</span> Retrain Multi-Angle AI
+        </button>
+      </div>
+
+      <!-- A* Corridor Router Card -->
+      <div class="sensor-card" id="astarRouterCard" style="margin-top: 10px; border-color: rgba(59, 130, 246, 0.4); background: rgba(10, 15, 30, 0.45);">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">🗺️</span>
+            <span class="sensor-name" style="color: #3b82f6; font-weight: bold; letter-spacing: 0.5px;">A* Corridor Router</span>
+          </div>
+          <span class="sensor-status locked" id="astarStatus" style="background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3); font-size: 8px; padding: 0 4px; display: flex; align-items: center; height: 16px;">INACTIVE</span>
+        </div>
+        <div style="font-size: 9px; color: var(--text2); margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-family: monospace;">
+          <div>Start Node: 
+            <select id="astarStart" style="background: #0d1e36; border: 1px solid #1a3a5c; color: #fff; font-size: 9px; border-radius: 3px; padding: 1px 3px;">
+              <option value="A">Intersection A</option>
+              <option value="B">Intersection B</option>
+              <option value="C">Intersection C</option>
+              <option value="D">Intersection D</option>
+              <option value="E" selected>Intersection E</option>
+              <option value="F">Intersection F</option>
+              <option value="G">Intersection G</option>
+              <option value="H">Intersection H</option>
+              <option value="I">Intersection I</option>
+            </select>
+          </div>
+          <div>End Node: 
+            <select id="astarEnd" style="background: #0d1e36; border: 1px solid #1a3a5c; color: #fff; font-size: 9px; border-radius: 3px; padding: 1px 3px;">
+              <option value="A">Intersection A</option>
+              <option value="B">Intersection B</option>
+              <option value="C">Intersection C</option>
+              <option value="D">Intersection D</option>
+              <option value="E">Intersection E</option>
+              <option value="F">Intersection F</option>
+              <option value="G">Intersection G</option>
+              <option value="H">Intersection H</option>
+              <option value="I" selected>Intersection I</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size: 9px; color: var(--text2); margin-top: 6px; font-family: monospace;">
+          <div>Active Route: <span id="astarPathText" style="color: #00ff88; font-weight: bold;">None</span></div>
+          <div style="margin-top: 3px;">Cascade status: <span id="astarCascadeText" style="color: #60a5fa; font-weight: bold;">Pending</span></div>
+        </div>
+        <button class="btn btn-secondary" id="btnRunAStar" onclick="requestAStarCorridor()" style="width: 100%; height: 26px; padding: 0; font-size: 9px; margin-top: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; font-family: var(--font-head); letter-spacing: 0.5px; cursor: pointer;">
+          🗺️ Request A* Priority Corridor
+        </button>
+      </div>
+
+      <div class="event-log" id="eventLog">
+        <div class="log-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>📋 Event Log</span>
+          <button onclick="clearLogs()" style="background: transparent; border: none; color: var(--text3); cursor: pointer; font-size: 9px; font-family: var(--font-head); letter-spacing: 0.5px; display: flex; align-items: center; gap: 3px; padding: 2px 4px; border-radius: 3px; border: 1px solid rgba(74, 122, 155, 0.2); outline: none;">
+            🗑️ Clear
+          </button>
+        </div>
+        <div class="log-entries" id="logEntries">
+          <div class="log-entry info">System initialized. Monitoring active.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Intersection Canvas -->
+    <section class="intersection-wrap">
+      <canvas id="intersectionCanvas"></canvas>
+      <div class="canvas-overlay" id="detectionOverlay" style="display:none">
+        <div class="detection-badge">
+          <span class="badge-icon">⚡</span>
+          <span class="badge-text">AMBULANCE DETECTED</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Signal Control & Stats -->
+    <aside class="panel panel-right">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="panel-title" style="margin: 0;"><span class="panel-icon">🚦</span> Signal Control</h3>
+        <div style="display: flex; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px;">
+          <button class="switcher-btn" id="btnJunc3" onclick="changeJunctionMode(3)" style="background: transparent; color: #8892b0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">3 ROADS</button>
+          <button class="switcher-btn active" id="btnJunc4" onclick="changeJunctionMode(4)" style="background: var(--accent); color: #0a192f; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; margin-left: 2px;">4 ROADS</button>
+          <button class="switcher-btn" id="btnJunc5" onclick="changeJunctionMode(5)" style="background: transparent; color: #8892b0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; margin-left: 2px;">5 ROADS</button>
+        </div>
+      </div>
+
+      <div class="signals-grid">
+        <div class="signal-card" id="sigNorth">
+          <div class="signal-dir">⬆ NORTH</div>
+          <div class="traffic-light">
+            <div class="light red" id="nRed"></div>
+            <div class="light yellow" id="nYellow"></div>
+            <div class="light green active" id="nGreen"></div>
+          </div>
+          <div class="signal-timer" id="nTimer">18s</div>
+          <div class="signal-state" id="nState">GREEN</div>
+        </div>
+
+        <div class="signal-card" id="sigEast">
+          <div class="signal-dir">➡ EAST</div>
+          <div class="traffic-light">
+            <div class="light red" id="eRed"></div>
+            <div class="light yellow active" id="eYellow"></div>
+            <div class="light green" id="eGreen"></div>
+          </div>
+          <div class="signal-timer" id="eTimer">5s</div>
+          <div class="signal-state" id="eState">YELLOW</div>
+        </div>
+
+        <div class="signal-card" id="sigSouth">
+          <div class="signal-dir">⬇ SOUTH</div>
+          <div class="traffic-light">
+            <div class="light red active" id="sRed"></div>
+            <div class="light yellow" id="sYellow"></div>
+            <div class="light green" id="sGreen"></div>
+          </div>
+          <div class="signal-timer" id="sTimer">22s</div>
+          <div class="signal-state" id="sState">RED</div>
+        </div>
+
+        <div class="signal-card" id="sigWest">
+          <div class="signal-dir">⬅ WEST</div>
+          <div class="traffic-light">
+            <div class="light red active" id="wRed"></div>
+            <div class="light yellow" id="wYellow"></div>
+            <div class="light green" id="wGreen"></div>
+          </div>
+          <div class="signal-timer" id="wTimer">30s</div>
+          <div class="signal-state" id="wState">RED</div>
+        </div>
+
+        <div class="signal-card" id="sigNortheast" style="display: none; grid-column: span 2;">
+          <div class="signal-dir">⬈ NORTHEAST</div>
+          <div class="traffic-light">
+            <div class="light red active" id="neRed"></div>
+            <div class="light yellow" id="neYellow"></div>
+            <div class="light green" id="neGreen"></div>
+          </div>
+          <div class="signal-timer" id="neTimer">120s</div>
+          <div class="signal-state" id="neState">RED</div>
+        </div>
+      </div>
+
+      <!-- RL Signal Controller Card -->
+      <div class="sensor-card" id="rlControllerCard" style="margin-top: 10px; border-color: rgba(168, 85, 247, 0.4); background: rgba(13, 10, 24, 0.45);">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">🤖</span>
+            <span class="sensor-name" style="color: #a855f7; font-weight: bold; letter-spacing: 0.5px;">RL Signal Controller</span>
+          </div>
+          <span class="sensor-status locked" id="rlStatus" style="background: rgba(168,85,247,0.15); color: #c084fc; border-color: rgba(168,85,247,0.3); font-size: 8px; padding: 0 4px; display: flex; align-items: center; height: 16px;">OFF</span>
+        </div>
+        <div style="font-size: 9px; color: var(--text2); margin-top: 6px; display: flex; flex-direction: column; gap: 4px; font-family: monospace;">
+          <div>State (Queue N,E,S,W): <span style="color: #c084fc; font-weight: bold;" id="rlStateQueues">0,0,0,0</span></div>
+          <div>State (Wait N,E,S,W): <span style="color: #c084fc; font-weight: bold;" id="rlStateWait">0s,0s,0s,0s</span></div>
+          <div>State (Flow N,E,S,W): <span style="color: #c084fc; font-weight: bold;" id="rlStateFlow">0.0,0.0,0.0,0.0</span></div>
+          <div>Action A (PPO Agent): <span style="color: #00ff88; font-weight: bold;" id="rlActionText">KEEP_GREEN</span></div>
+          <div>Reward R (Congestion): <span style="color: #ff3355; font-weight: bold;" id="rlRewardText">0.00</span></div>
+          <div>Accumulated Reward: <span style="color: #60a5fa; font-weight: bold;" id="rlAccumText">0.00</span></div>
+        </div>
+        <button class="btn btn-secondary" id="btnToggleRL" onclick="toggleRLMode()" style="width: 100%; height: 26px; padding: 0; font-size: 9px; margin-top: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); color: #c084fc; font-family: var(--font-head); letter-spacing: 0.5px; cursor: pointer;">
+          🤖 Enable RL Controller
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Stats -->
+      <h3 class="panel-title"><span class="panel-icon">📊</span> Live Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-icon">🚑</div>
+          <div class="stat-num" id="statAmbulances">0</div>
+          <div class="stat-desc">Ambulances Cleared</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">⏱️</div>
+          <div class="stat-num" id="statAvgTime">—</div>
+          <div class="stat-desc">Avg Response (ms)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">🚗</div>
+          <div class="stat-num" id="statCars">12</div>
+          <div class="stat-desc">Vehicles Waiting</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">✅</div>
+          <div class="stat-num" id="statAccuracy">98.7%</div>
+          <div class="stat-desc">Detection Accuracy</div>
+        </div>
+      </div>
+
+      <!-- Live Congestion Analytics Graph Card -->
+      <div class="sensor-card" id="congestionGraphCard" style="margin-top: 10px; border-color: rgba(0, 212, 255, 0.4); background: rgba(10, 15, 30, 0.455);">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center; margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">📈</span>
+            <span class="sensor-name" style="color: #00d4ff; font-weight: bold; letter-spacing: 0.5px;">Live Congestion Graph</span>
+          </div>
+          <span class="sensor-status locked" id="congestionStatus" style="background: rgba(0,212,255,0.15); color: #00d4ff; border-color: rgba(0,212,255,0.3); font-size: 8px; padding: 0 4px; display: flex; align-items: center; height: 16px;">REAL-TIME</span>
+        </div>
+        <div style="text-align: center; background: #060e18; border-radius: 6px; padding: 6px; border: 1px solid #1a3a5c; position: relative; overflow: hidden; height: 110px; display: flex; align-items: center; justify-content: center;">
+          <canvas id="congestionCanvas" width="220" height="100" style="background: #040810; border-radius: 4px;"></canvas>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 8px; font-family: monospace; color: var(--text3); margin-top: 6px; justify-content: center;" id="congestionLegend">
+          <!-- Legend items will be dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Algorithm Comparison Dashboard Card -->
+      <div class="sensor-card" id="algoCompareCard" style="margin-top: 10px; border-color: rgba(16, 185, 129, 0.4); background: rgba(10, 20, 15, 0.455);">
+        <div class="sensor-header" style="justify-content: space-between; display: flex; align-items: center; margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="sensor-icon">📊</span>
+            <span class="sensor-name" style="color: #10b981; font-weight: bold; letter-spacing: 0.5px;">Algorithm Comparison</span>
+          </div>
+          <span class="sensor-status active" id="activeControlModeText" style="background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3); font-size: 8px; padding: 0 4px; display: flex; align-items: center; height: 16px;">FIXED CYCLE</span>
+        </div>
+        
+        <div style="font-size: 9px; font-family: monospace; display: flex; flex-direction: column; gap: 8px; color: var(--text2);">
+          <!-- Fixed Mode Selector -->
+          <div onclick="selectControlMode('fixed')" style="background: rgba(255,255,255,0.02); border: 1px solid #1a3a5c; border-radius: 4px; padding: 4px 6px; cursor: pointer; transition: all 0.3s ease;" id="btnModeFixed" class="mode-select-row">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 2px; align-items: center;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="active-dot" id="dotFixed" style="width: 5px; height: 5px; background: #ff3355; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #ff3355;"></span>
+                1. Fixed Cycle (30s)
+              </span>
+              <span style="font-weight: bold;"><span id="valFixedWait">0.0</span>s avg (<span id="valFixedCount">0</span> cars)</span>
+            </div>
+            <div style="background: #09131d; height: 4px; border-radius: 2px; overflow: hidden; border: 1px solid rgba(26,58,92,0.5);">
+              <div id="barFixedWait" style="background: #ff3355; width: 0%; height: 100%; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+          
+          <!-- Actuated Mode Selector -->
+          <div onclick="selectControlMode('actuated')" style="background: rgba(255,255,255,0.02); border: 1px solid #1a3a5c; border-radius: 4px; padding: 4px 6px; cursor: pointer; transition: all 0.3s ease;" id="btnModeActuated" class="mode-select-row">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 2px; align-items: center;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="active-dot" id="dotActuated" style="width: 5px; height: 5px; background: transparent; border-radius: 50%; display: inline-block;"></span>
+                2. Actuated (Clearance)
+              </span>
+              <span style="font-weight: bold;"><span id="valActuatedWait">0.0</span>s avg (<span id="valActuatedCount">0</span> cars)</span>
+            </div>
+            <div style="background: #09131d; height: 4px; border-radius: 2px; overflow: hidden; border: 1px solid rgba(26,58,92,0.5);">
+              <div id="barActuatedWait" style="background: #ffd700; width: 0%; height: 100%; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+          
+          <!-- RL AI Mode Selector -->
+          <div onclick="selectControlMode('rl')" style="background: rgba(255,255,255,0.02); border: 1px solid #1a3a5c; border-radius: 4px; padding: 4px 6px; cursor: pointer; transition: all 0.3s ease;" id="btnModeRl" class="mode-select-row">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 2px; align-items: center;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span class="active-dot" id="dotRl" style="width: 5px; height: 5px; background: transparent; border-radius: 50%; display: inline-block;"></span>
+                3. RL Signal Agent (AI)
+              </span>
+              <span style="font-weight: bold; color: #00ff88;"><span id="valRlWait">0.0</span>s avg (<span id="valRlCount">0</span> cars)</span>
+            </div>
+            <div style="background: #09131d; height: 4px; border-radius: 2px; overflow: hidden; border: 1px solid rgba(26,58,92,0.5);">
+              <div id="barRlWait" style="background: #00ff88; width: 0%; height: 100%; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+        </div>
+        
+        <button class="btn btn-secondary" onclick="resetCompareMetrics()" style="width: 100%; height: 22px; padding: 0; font-size: 8px; margin-top: 8px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 3px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981; font-family: var(--font-head); letter-spacing: 0.5px; cursor: pointer;">
+          🔄 Reset Metric Comparison
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Control Buttons -->
+      <h3 class="panel-title"><span class="panel-icon">🎮</span> Simulation Control</h3>
+      <div class="controls">
+        <button class="btn btn-primary" id="btnAmbulance" onclick="triggerAmbulance()">
+          <span>🚑</span> Deploy Ambulance
+        </button>
+        <button class="btn btn-secondary" id="btnReset" onclick="resetSimulation()">
+          <span>🔄</span> Reset System
+        </button>
+        <button class="btn btn-toggle" id="btnAuto" onclick="toggleAuto()">
+          <span>⚙️</span> Auto Mode: OFF
+        </button>
+      </div>
+
+      <div class="speed-control">
+        <label>Simulation Speed</label>
+        <input type="range" id="speedRange" min="0.5" max="3" step="0.5" value="1" oninput="updateSpeed(this.value)"/>
+        <span id="speedLabel">1×</span>
+      </div>
+
+      <!-- Phase Timeline -->
+      <div class="phase-timeline">
+        <div class="timeline-item active" id="tl1">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Normal Operation</div>
+            <div class="tl-desc">Standard signal cycle</div>
+          </div>
+        </div>
+        <div class="timeline-item" id="tl2">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Ambulance Detected</div>
+            <div class="tl-desc">AI sensors activated</div>
+          </div>
+        </div>
+        <div class="timeline-item" id="tl3">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Priority GREEN</div>
+            <div class="tl-desc">All roads RED → ambulance GREEN</div>
+          </div>
+        </div>
+        <div class="timeline-item" id="tl4">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-title">Resume Normal</div>
+            <div class="tl-desc">System resets signal cycle</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Documentation Modal Overlay -->
+  <div id="docsModal" class="modal-overlay" onclick="if(event.target===this) closeDocsModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">📖 System Algorithms & AI Documentation</h2>
+        <button class="modal-close" onclick="closeDocsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Tab Buttons -->
+        <div class="modal-tabs">
+          <button class="modal-tab-btn active" onclick="selectDocTab('overview')">Overview & Arch</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('vision')">AI & Vision Pipeline</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('rl')">Reinforcement Learning</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('genetic')">GA & NEAT Optimizers</button>
+          <button class="modal-tab-btn" onclick="selectDocTab('tech')">Tech Stack & Datasets</button>
+        </div>
+
+        <!-- TAB 1: OVERVIEW & ARCHITECTURE -->
+        <div id="tab-overview" class="modal-tab-content active">
+          <div style="font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:16px;">
+            The <strong>AI Ambulance Priority Traffic Management System (APTMS)</strong> is a cutting-edge real-time traffic coordination solution. It leverages sensor fusion, Deep Learning (YOLOv8), Webster's delay calculations, Genetic Algorithms, and Reinforcement Learning (PPO) to dynamically optimize signal times and ensure immediate emergency vehicle preemption.
+          </div>
+          
+          <h3 class="panel-title" style="border-bottom: 1px solid var(--border2); padding-bottom: 6px; margin-bottom: 12px; font-size:11px; color:var(--accent);">📐 System Dataflow Pipeline</h3>
+          
+          <div class="doc-diagram">
+            <div class="diag-row">
+              <div class="diag-node highlight">📹 Intersection Cameras / Live Video</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node">👁️ YOLOv8 object detection & confidence filtering</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node">📐 Polygon Zone Counting / Queue Lengths</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node green">🚨 Emergency Vehicle Priority Detector</div>
+              <div class="diag-arrow">➡️</div>
+              <div class="diag-node red">⚡ Preemption Trigger (All Red, priority Green)</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node">🧠 PPO Agent Decision (Keep / Switch Signal)</div>
+              <div class="diag-arrow">↔️</div>
+              <div class="diag-node">🧬 GA Cycle Webster Optimizer</div>
+            </div>
+            <div class="diag-arrow">⬇</div>
+            <div class="diag-row">
+              <div class="diag-node highlight">🚦 Smart Traffic Light Output & Live Dashboard</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: AI & VISION PIPELINE -->
+        <div id="tab-vision" class="modal-tab-content">
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">👁️ YOLOv8 Object Detection</div>
+              <div class="doc-card-body">
+                The visual recognition engine uses YOLOv8 (nano/small/medium checkpoints) to classify and count vehicles across multiple lanes in real-time.
+                <div class="badge-container">
+                  <span class="doc-badge">Car Detection</span>
+                  <span class="doc-badge">Bus / Truck</span>
+                  <span class="doc-badge">Motorcycle</span>
+                  <span class="doc-badge">95%+ Accuracy</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="doc-card">
+              <div class="doc-card-title">🚨 Emergency Vehicle Detection</div>
+              <div class="doc-card-body">
+                A custom fine-tuned YOLO model is deployed to identify emergency services in the video feeds.
+                <div class="badge-container">
+                  <span class="doc-badge red">Ambulance</span>
+                  <span class="doc-badge red">Fire Truck</span>
+                  <span class="doc-badge red">Police Vehicle</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-card" style="grid-column: 1 / -1;">
+              <div class="doc-card-title">⚙️ Computer Vision Processing Chain</div>
+              <div class="doc-card-body">
+                <ol class="doc-card-list">
+                  <li><strong>Confidence Filtering:</strong> Bounding boxes with a confidence score below 0.50 are filtered out to prevent false counts.</li>
+                  <li><strong>Polygon Zone Checking:</strong> Precise counting is limited to defined lanes (polygons). A ray-casting algorithm checks if the center point of a bounding box falls within the coordinates of the designated region.</li>
+                  <li><strong>Queue Length Estimation:</strong> Measures vehicle density by assessing wait times and clusters of stopped objects.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: REINFORCEMENT LEARNING -->
+        <div id="tab-rl" class="modal-tab-content">
+          <div style="font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:16px;">
+            APTMS uses <strong>Proximal Policy Optimization (PPO)</strong> (via Stable-Baselines3 and Gymnasium) for adaptive traffic signal control.
+          </div>
+          
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">📊 State Space (Observation)</div>
+              <div class="doc-card-body">
+                The environment observations capture the current traffic layout:
+                <ul class="doc-card-list">
+                  <li>Queue length per lane / approach</li>
+                  <li>Total waiting time of vehicles</li>
+                  <li>Current active traffic light state</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="doc-card">
+              <div class="doc-card-title">🎮 Action Space</div>
+              <div class="doc-card-body">
+                The agent determines the optimal next signal configuration:
+                <ul class="doc-card-list">
+                  <li><strong>KEEP GREEN:</strong> Extend the current phase (e.g., up to maximum threshold)</li>
+                  <li><strong>SWITCH SIGNAL:</strong> Transition to the next phase (triggers yellow light phase)</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="doc-card" style="grid-column: 1 / -1;">
+              <div class="doc-card-title">🏆 Reward Function Formulation</div>
+              <div class="doc-card-body">
+                The reward function pushes the system to reduce congestion:
+                <div style="background:var(--bg2); padding:8px 12px; border-radius:4px; border:1px solid var(--border2); font-family:monospace; margin-top:8px;">
+                  Reward = -w₁ × (Total Waiting Time) - w₂ × (Average Queue Length) - w₃ × (Emergency Delay)
+                </div>
+                <div style="margin-top:6px; font-size:10px; color:var(--text3);">
+                  *Where w₁, w₂, and w₃ are weighting parameters configured to prioritize ambulances and clear queues efficiently.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: GA & NEAT OPTIMIZERS -->
+        <div id="tab-genetic" class="modal-tab-content">
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">🧬 Webster's Delay Formula & Genetic Algorithm</div>
+              <div class="doc-card-body">
+                When global optimizations are triggered, a Genetic Algorithm computes timing offsets by modeling vehicle delay.
+                <div style="background:var(--bg2); padding:8px 12px; border-radius:4px; border:1px solid var(--border2); font-family:monospace; margin:8px 0; font-size:10px;">
+                  Delay (d) = c(1-g/c)² / 2(1-x) + x² / 2q(1-x) - 0.65(c/q²)^(1/3) × x^(2+5g/c)
+                </div>
+                The GA evaluates a population of 400 configurations across 25 generations to identify the set of phase timings that yields the lowest cumulative delay.
+                <div class="badge-container">
+                  <span class="doc-badge yellow">Webster Delay Model</span>
+                  <span class="doc-badge yellow">400 Population</span>
+                  <span class="doc-badge yellow">25 Generations</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="doc-card">
+              <div class="doc-card-title">🧠 NEAT (NeuroEvolution of Augmenting Topologies)</div>
+              <div class="doc-card-body">
+                The NEAT coordinator simulates green waves across adjacent intersections.
+                <ul class="doc-card-list">
+                  <li><strong>Evolving Topology:</strong> Neurons and connections grow dynamically to learn coordination policies.</li>
+                  <li><strong>Green Wave Sync:</strong> Maximizes throughput on straight corridors (e.g., North-South, East-West) by offset synchronization.</li>
+                  <li><strong>Efficiency Gains:</strong> Yields a ~35.5% reduction in overall stop-and-go delays under peak conditions.</li>
+                </ul>
+                <div class="badge-container">
+                  <span class="doc-badge green">Evolved Network</span>
+                  <span class="doc-badge green">Green Wave Synced</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: TECH STACK & DATASETS -->
+        <div id="tab-tech" class="modal-tab-content">
+          <h3 class="panel-title" style="border-bottom: 1px solid var(--border2); padding-bottom: 6px; margin-bottom: 12px; font-size:11px; color:var(--accent);">🛠️ Technical Frameworks</h3>
+          
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Tools / Libraries</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Computer Vision</strong></td>
+                <td>OpenCV, Ultralytics YOLOv8, PyTorch</td>
+              </tr>
+              <tr>
+                <td><strong>Reinforcement Learning</strong></td>
+                <td>Stable Baselines3, Gymnasium, SUMO RL</td>
+              </tr>
+              <tr>
+                <td><strong>Simulation & Visualization</strong></td>
+                <td>SUMO (Simulation of Urban Mobility), Three.js (WebGL), Unity 3D Engine</td>
+              </tr>
+              <tr>
+                <td><strong>Backend & Dashboard</strong></td>
+                <td>Flask API, Flask SocketIO, WebSockets</td>
+              </tr>
+              <tr>
+                <td><strong>Analysis & Graphing</strong></td>
+                <td>Matplotlib, Seaborn, Pandas, Numpy, Scipy</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 class="panel-title" style="border-bottom: 1px solid var(--border2); padding-bottom: 6px; margin-top: 18px; margin-bottom: 12px; font-size:11px; color:var(--accent);">📂 Datasets Integrated</h3>
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">🚗 COCO Dataset</div>
+              <div class="doc-card-body">
+                Used to pretrain the YOLOv8 detector on standard passenger vehicles, commercial buses, cargo trucks, and motorcycles.
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">🚑 Kaggle & Roboflow Emergency Datasets</div>
+              <div class="doc-card-body">
+                Custom emergency vehicle datasets used to train identification classifiers for ambulances, fire brigades, and police cars.
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">🛣️ BDD100K & UA-DETRAC</div>
+              <div class="doc-card-body">
+                Berkeley DeepDrive and UA-DETRAC datasets utilized for testing lane detection and queue density estimations under varying weather conditions.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="images.js"></script>
+  <script src="simulation.js?v=3"></script>
+  
+  <!-- Doc Modal controller scripts -->
+  <script>
+    function openDocsModal() {
+      const modal = document.getElementById('docsModal');
+      modal.classList.add('open');
+      modal.style.display = 'flex';
+      // Log event
+      addLog('📖 Opened System Documentation Viewer.', 'info');
+    }
+    function closeDocsModal() {
+      const modal = document.getElementById('docsModal');
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; }, 300);
+    }
+    function selectDocTab(tabName) {
+      // Hide all contents
+      const contents = document.querySelectorAll('.modal-tab-content');
+      contents.forEach(c => c.classList.remove('active'));
+      
+      // Deactivate all buttons
+      const buttons = document.querySelectorAll('.modal-tab-btn');
+      buttons.forEach(b => b.classList.remove('active'));
+      
+      // Activate selected
+      document.getElementById('tab-' + tabName).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+    function clearLogs() {
+      const c = document.getElementById('logEntries');
+      c.innerHTML = '<div class="log-entry info">[' + new Date().toLocaleTimeString() + '] System events log cleared.</div>';
+    }
+  </script>
+</body>
+</html>
