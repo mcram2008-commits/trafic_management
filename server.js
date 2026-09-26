@@ -13,9 +13,18 @@ app.use(express.json());
 // Serve all frontend files from the project root directory
 app.use(express.static(__dirname));
 
-// Serve index.html for the root route explicitly
+// Serve index.html and static assets explicitly for Vercel/serverless environments
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+app.get('/style.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'style.css'));
+});
+app.get('/simulation.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'simulation.js'));
+});
+app.get('/images.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'images.js'));
 });
 
 // 1. Simple Environment Variable Loader from .env file

@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "index.html,style.css,simulation.js,images.js"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
