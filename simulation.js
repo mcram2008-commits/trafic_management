@@ -20,8 +20,29 @@ if(!CanvasRenderingContext2D.prototype.roundRect){
 /* ── Canvas ───────────────────────────────────────────────── */
 const canvas=document.getElementById('intersectionCanvas');
 let ctx=canvas.getContext('2d');
-function resize(){canvas.width=canvas.parentElement.clientWidth;canvas.height=canvas.parentElement.clientHeight;}
-resize();window.addEventListener('resize',resize);
+function resize(){
+  if(!canvas || !canvas.parentElement) return;
+  const pw = canvas.parentElement.clientWidth;
+  const ph = canvas.parentElement.clientHeight;
+  if(pw > 50 && ph > 50) {
+    canvas.width = pw;
+    canvas.height = ph;
+  } else {
+    canvas.width = Math.max(400, (window.innerWidth || 1200) - 600);
+    canvas.height = Math.max(400, (window.innerHeight || 800) - 60);
+  }
+}
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('load', resize);
+document.addEventListener('DOMContentLoaded', resize);
+if (typeof ResizeObserver !== 'undefined' && canvas && canvas.parentElement) {
+  try {
+    new ResizeObserver(() => resize()).observe(canvas.parentElement);
+  } catch(e) {}
+} else {
+  setInterval(resize, 1000);
+}
 
 let mouseX = -1000, mouseY = -1000;
 let hoveredVehicle = null;
@@ -1601,6 +1622,14 @@ function drawScan(rc){
 let lastDraw=0;
 function draw(ts){
   const dt=Math.min((ts-lastDraw)/1000,0.1)*simSpeed;lastDraw=ts;
+  if (canvas && canvas.parentElement) {
+    const pw = canvas.parentElement.clientWidth;
+    const ph = canvas.parentElement.clientHeight;
+    if (pw > 50 && ph > 50 && (canvas.width !== pw || canvas.height !== ph)) {
+      canvas.width = pw;
+      canvas.height = ph;
+    }
+  }
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawGrid();
   const cx=canvas.width/2,cy=canvas.height/2,hw=Math.min(canvas.width,canvas.height)*0.09;
