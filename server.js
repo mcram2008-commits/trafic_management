@@ -44,8 +44,147 @@ const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
 
-// 2. Establish SQLite DB Connection
-const db = new DatabaseSync(path.join(__dirname, 'database.db'));
+// 2. Establish SQLite DB Connection (with Vercel/Serverless Fail-Safe Fallback)
+let db;
+try {
+  const { DatabaseSync } = require('node:sqlite');
+  const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+  const dbPath = isServerless ? '/tmp/database.db' : path.join(__dirname, 'database.db');
+
+  if (isServerless && !fs.existsSync('/tmp')) {
+    fs.mkdirSync('/tmp', { recursive: true });
+  }
+
+  db = new DatabaseSync(dbPath);
+  console.log(`[DB] Connected to SQLite database at: ${dbPath}`);
+} catch (err) {
+  console.warn(`[DB Warning] Native node:sqlite unavailable (${err.message}). Activating In-Memory DB Fallback for Serverless.`);
+
+  class InMemoryStore {
+    constructor() {
+      this.tables = {
+        customers: [],
+        orders: [],
+        appointments: [],
+        products: [],
+        messages: []
+      };
+      this.autoIds = { customers: 1, messages: 1 };
+    }
+    exec(sql) {}
+    prepare(sql) {
+      const self = this;
+      const cleanSql = sql.trim().toUpperCase();
+
+      return {
+        get(...params) {
+          if (cleanSql.includes('COUNT(*)')) {
+            const match = sql.match(/FROM\s+(\w+)/i);
+            const tbl = match ? match[1].toLowerCase() : 'customers';
+            const rows = self.tables[tbl] || [];
+            return { count: rows.length };
+          }
+          if (cleanSql.includes('FROM CUSTOMERS')) {
+            if (params.length > 0 && typeof params[0] === 'number') {
+              return self.tables.customers.find(c => c.id === params[0]) || null;
+            }
+            if (sql.includes('phone') || sql.includes('LIKE')) {
+              const query = (params[0] || '').replace(/%/g, '');
+              return self.tables.customers.find(c => (c.phone || '').includes(query)) || self.tables.customers[0] || null;
+            }
+            return self.tables.customers[0] || null;
+          }
+          if (cleanSql.includes('FROM ORDERS')) {
+            if (params.length > 0) {
+              return self.tables.orders.find(o => o.customer_id === params[0]) || null;
+            }
+            return self.tables.orders[0] || null;
+          }
+          if (cleanSql.includes('FROM APPOINTMENTS')) {
+            if (params.length > 0) {
+              return self.tables.appointments.find(a => a.id === params[0] || a.customer_id === params[0]) || null;
+            }
+            return self.tables.appointments[0] || null;
+          }
+          if (cleanSql.includes('FROM MESSAGES')) {
+            if (params.length > 0) {
+              const custMsgs = self.tables.messages.filter(m => m.customer_id === params[0]);
+              return custMsgs[custMsgs.length - 1] || null;
+            }
+            return self.tables.messages[0] || null;
+          }
+          return null;
+        },
+        all(...params) {
+          if (cleanSql.includes('FROM CUSTOMERS')) return self.tables.customers;
+          if (cleanSql.includes('FROM ORDERS')) return self.tables.orders;
+          if (cleanSql.includes('FROM APPOINTMENTS')) return self.tables.appointments;
+          if (cleanSql.includes('FROM PRODUCTS')) return self.tables.products;
+          if (cleanSql.includes('FROM MESSAGES')) {
+            if (params.length > 0) {
+              return self.tables.messages.filter(m => m.customer_id === params[0]);
+            }
+            return self.tables.messages;
+          }
+          return [];
+        },
+        run(...params) {
+          if (cleanSql.startsWith('INSERT INTO CUSTOMERS')) {
+            const newCust = {
+              id: self.autoIds.customers++,
+              name: params[0],
+              phone: params[1],
+              email: params[2] || '',
+              status: params[3] || 'lead',
+              joined: params[4] || new Date().toISOString().substring(0, 10)
+            };
+            self.tables.customers.push(newCust);
+            return { lastInsertRowid: newCust.id };
+          }
+          if (cleanSql.startsWith('INSERT INTO ORDERS')) {
+            const newOrd = { id: params[0], customer_id: params[1], items: params[2], total: params[3], date: params[4], status: params[5] };
+            self.tables.orders.push(newOrd);
+            return {};
+          }
+          if (cleanSql.startsWith('INSERT INTO APPOINTMENTS')) {
+            const newAppt = { id: params[0], customer_id: params[1], service: params[2], date_time: params[3], status: params[4] };
+            self.tables.appointments.push(newAppt);
+            return {};
+          }
+          if (cleanSql.startsWith('INSERT INTO PRODUCTS')) {
+            const newProd = { id: params[0], name: params[1], price: params[2], stock: params[3] };
+            self.tables.products.push(newProd);
+            return {};
+          }
+          if (cleanSql.startsWith('INSERT INTO MESSAGES')) {
+            const newMsg = {
+              id: self.autoIds.messages++,
+              customer_id: params[0],
+              sender: params[1],
+              text: params[2],
+              timestamp: params[3],
+              source: params[4]
+            };
+            self.tables.messages.push(newMsg);
+            return {};
+          }
+          if (cleanSql.startsWith('UPDATE MESSAGES')) {
+            const [source, customerId] = params;
+            self.tables.messages.forEach(m => {
+              if (m.customer_id === customerId && m.sender === 'customer' && m.source === 'unknown') {
+                m.source = source;
+              }
+            });
+            return {};
+          }
+          return {};
+        }
+      };
+    }
+  }
+
+  db = new InMemoryStore();
+}
 
 // Helper to format timestamps
 function getShortTime() {
@@ -600,7 +739,12 @@ app.post('/api/chat/agent', async (req, res) => {
   }
 });
 
-// Run server
-app.listen(PORT, () => {
-  console.log(`\x1b[32m[Server] Running WhatsApp Automation Simulator at: http://localhost:${PORT}\x1b[0m`);
-});
+// Export Express app for Vercel / serverless runtime
+module.exports = app;
+
+// Run standalone server when executed directly
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\x1b[32m[Server] Running WhatsApp Automation Simulator at: http://localhost:${PORT}\x1b[0m`);
+  });
+}
